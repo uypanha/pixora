@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sliders, Grid, Magnet } from 'lucide-react';
+import { Sliders, Grid, Magnet, Palette } from 'lucide-react';
 import { useDocument } from '../document/documentContext';
 import { useEditor } from '../editor/editorContext';
 import { AlignSection } from './sections/AlignSection';
@@ -10,6 +10,7 @@ import { TypographySection } from './sections/TypographySection';
 import { EffectsSection } from './sections/EffectsSection';
 import { ImageSection } from './sections/ImageSection';
 import { TextObject, ImageObject } from '../types/document';
+import { ColorPicker } from '../components/color/ColorPicker';
 
 export const PropertiesPanel: React.FC = () => {
   const { document, updateSettings } = useDocument();
@@ -65,6 +66,18 @@ export const PropertiesPanel: React.FC = () => {
           <div className="flex items-center space-x-1.5 text-xs font-semibold text-pixora-text-muted uppercase tracking-wider">
             <Sliders size={14} className="text-pixora-text-dim" />
             <span>Document Settings</span>
+          </div>
+
+          {/* Canvas Background Color */}
+          <div className="flex items-center justify-between bg-pixora-elevated p-2.5 rounded-lg border border-pixora-border text-xs">
+            <div className="flex items-center space-x-1.5 font-medium text-white">
+              <Palette size={13} className="text-violet-400" />
+              <span>Canvas Background</span>
+            </div>
+            <ColorPicker
+              value={document.settings.canvasColor || '#121316'}
+              onChange={color => updateSettings({ canvasColor: color })}
+            />
           </div>
 
           {/* Grid Settings */}

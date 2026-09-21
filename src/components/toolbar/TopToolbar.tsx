@@ -2,12 +2,7 @@ import React, { useRef } from 'react';
 import {
   MousePointer,
   Hand,
-  Square,
-  Circle,
-  Minus,
-  Type,
   Image as ImageIcon,
-  Layout,
   Undo2,
   Redo2,
   Download,
@@ -25,6 +20,7 @@ import { AutosaveStatus } from '../../storage/autosave';
 import { savePixoraFile } from '../../export/pixoraExporter';
 import { importPixoraFile } from '../../import/pixoraImporter';
 import { importImageFile } from '../../import/imageImporter';
+import { ShapesDropdown } from './ShapesDropdown';
 
 interface TopToolbarProps {
   onOpenLauncher: () => void;
@@ -99,13 +95,8 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     savePixoraFile(document);
   };
 
-  const tools: { id: Tool; label: string; icon: React.ReactNode; shortcut: string }[] = [
+  const coreTools: { id: Tool; label: string; icon: React.ReactNode; shortcut: string }[] = [
     { id: 'select', label: 'Select', icon: <MousePointer size={16} />, shortcut: 'V' },
-    { id: 'frame', label: 'Frame', icon: <Layout size={16} />, shortcut: 'F' },
-    { id: 'rectangle', label: 'Rectangle', icon: <Square size={16} />, shortcut: 'R' },
-    { id: 'ellipse', label: 'Ellipse', icon: <Circle size={16} />, shortcut: 'O' },
-    { id: 'line', label: 'Line', icon: <Minus size={16} />, shortcut: 'L' },
-    { id: 'text', label: 'Text', icon: <Type size={16} />, shortcut: 'T' },
     { id: 'hand', label: 'Hand', icon: <Hand size={16} />, shortcut: 'H' },
   ];
 
@@ -201,7 +192,8 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
         {/* Creation Tools */}
         <div className="flex items-center bg-pixora-elevated rounded-lg p-0.5 border border-pixora-border">
-          {tools.map(tool => (
+          {/* Select & Hand */}
+          {coreTools.map(tool => (
             <button
               key={tool.id}
               onClick={() => setActiveTool(tool.id)}
@@ -215,6 +207,13 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               {tool.icon}
             </button>
           ))}
+
+          <div className="w-px h-4 bg-pixora-border mx-0.5" />
+
+          {/* Shapes Dropdown (Frame, Rect, Ellipse, Line, Text) */}
+          <ShapesDropdown />
+
+          <div className="w-px h-4 bg-pixora-border mx-0.5" />
 
           {/* Import Image Button */}
           <button

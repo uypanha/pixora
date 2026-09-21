@@ -495,12 +495,18 @@ export const Canvas: React.FC = () => {
       const id = selectedIds[0];
       const init = dragState.initialSnapshots[id];
       if (init) {
+        // Images: lock aspect ratio by default; Cmd (Mac) / Alt (Win) unlocks free scaling
+        // All other objects: free by default; Shift locks aspect ratio
+        const primaryObj = document.objects[id];
+        const isImage = primaryObj?.type === 'image';
+        const lockAspect = isImage ? !(e.metaKey || e.altKey) : e.shiftKey;
+
         const newBounds = calculateResize(
           dragState.handle,
           init,
           deltaX,
           deltaY,
-          e.shiftKey
+          lockAspect
         );
 
         const updates: Record<string, Partial<PixoraObject>> = {
@@ -681,8 +687,8 @@ export const Canvas: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full overflow-hidden select-none touch-none bg-pixora-bg ${cursorClass}`}
-      style={{ touchAction: 'none' }}
+      className={`relative w-full h-full overflow-hidden select-none touch-none ${cursorClass}`}
+      style={{ touchAction: 'none', backgroundColor: document.settings.canvasColor || '#121316' }}
       onWheel={handleWheel}
       onContextMenu={handleCanvasContextMenu}
       onPointerDown={handlePointerDown}
