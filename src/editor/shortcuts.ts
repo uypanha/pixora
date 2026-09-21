@@ -7,6 +7,7 @@ import { generateId } from '../utils/id';
 export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
   const {
     document,
+    activePage,
     deleteObjects,
     addObject,
     canUndo,
@@ -15,6 +16,7 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
     redo,
     groupObjects,
     ungroupObject,
+    reorderLayers,
   } = useDocument();
 
   const {
@@ -25,6 +27,8 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
     editingTextId,
     clipboard,
     setClipboard,
+    contextMenu,
+    setContextMenu,
   } = useEditor();
 
   useEffect(() => {
@@ -147,6 +151,62 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
         return;
       }
 
+      // Layer Ordering: Bring Forward / To Front (Cmd+] / Cmd+Shift+])
+      if (isCmdOrCtrl && e.key === ']') {
+        if (selectedIds.length > 0 && activePage) {
+          e.preventDefault();
+          const targetId = selectedIds[0];
+          const targetObj = document.objects[targetId];
+          const parentId = targetObj?.parentId || null;
+          const childList: string[] = parentId
+            ? (document.objects[parentId] as any)?.childIds || []
+            : activePage.childIds;
+          const idx = childList.indexOf(targetId);
+          if (idx < childList.length - 1) {
+            if (e.shiftKey) {
+              const filtered = childList.filter(id => id !== targetId);
+              filtered.push(targetId);
+              reorderLayers(activePage.id, parentId, childList, filtered);
+            } else {
+              const updated = [...childList];
+              const temp = updated[idx];
+              updated[idx] = updated[idx + 1];
+              updated[idx + 1] = temp;
+              reorderLayers(activePage.id, parentId, childList, updated);
+            }
+          }
+        }
+        return;
+      }
+
+      // Layer Ordering: Send Backward / To Back (Cmd+[ / Cmd+Shift+[)
+      if (isCmdOrCtrl && e.key === '[') {
+        if (selectedIds.length > 0 && activePage) {
+          e.preventDefault();
+          const targetId = selectedIds[0];
+          const targetObj = document.objects[targetId];
+          const parentId = targetObj?.parentId || null;
+          const childList: string[] = parentId
+            ? (document.objects[parentId] as any)?.childIds || []
+            : activePage.childIds;
+          const idx = childList.indexOf(targetId);
+          if (idx > 0) {
+            if (e.shiftKey) {
+              const filtered = childList.filter(id => id !== targetId);
+              filtered.unshift(targetId);
+              reorderLayers(activePage.id, parentId, childList, filtered);
+            } else {
+              const updated = [...childList];
+              const temp = updated[idx];
+              updated[idx] = updated[idx - 1];
+              updated[idx - 1] = temp;
+              reorderLayers(activePage.id, parentId, childList, updated);
+            }
+          }
+        }
+        return;
+      }
+
       // Delete / Backspace
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedIds.length > 0) {
@@ -159,6 +219,10 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
 
       // Escape
       if (e.key === 'Escape') {
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
         clearSelection();
         setActiveTool('select');
         return;
@@ -194,9 +258,11 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     document,
+    activePage,
     selectedIds,
     editingTextId,
     clipboard,
+    contextMenu,
     canUndo,
     canRedo,
     undo,
@@ -205,10 +271,12 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
     addObject,
     groupObjects,
     ungroupObject,
+    reorderLayers,
     setSelectedIds,
     clearSelection,
     setActiveTool,
     setClipboard,
+    setContextMenu,
     onOpenFilePicker,
   ]);
 }

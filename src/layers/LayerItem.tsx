@@ -24,7 +24,7 @@ interface LayerItemProps {
 
 export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
   const { document, updateObjectProperties } = useDocument();
-  const { selectedIds, selectObject, hoveredId, setHoveredId } = useEditor();
+  const { selectedIds, selectObject, hoveredId, setHoveredId, setContextMenu } = useEditor();
 
   const [isOpen, setIsOpen] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -40,6 +40,19 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
     selectObject(object.id, e.shiftKey || e.metaKey || e.ctrlKey);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selectedIds.includes(object.id)) {
+      selectObject(object.id, false);
+    }
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      targetId: object.id,
+    });
   };
 
   const handleToggleVisibility = (e: React.MouseEvent) => {
@@ -92,6 +105,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
     <div>
       <div
         onClick={handleSelect}
+        onContextMenu={handleContextMenu}
         onMouseEnter={() => setHoveredId(object.id)}
         onMouseLeave={() => setHoveredId(null)}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}

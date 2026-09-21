@@ -22,6 +22,7 @@ import {
 import { createDefaultProject } from './defaultProject';
 import { generateId } from '../utils/id';
 import { getBoundingBox } from '../utils/math';
+import { registerFontAsset } from '../utils/fontLoader';
 
 interface DocumentContextType {
   document: PixoraDocument;
@@ -96,6 +97,13 @@ export function DocumentProvider({
     }
     if (!newDoc.pages.some(p => p.id === activePageId)) {
       setActivePageId(newDoc.pages[0]?.id || '');
+    }
+    if (newDoc.assets) {
+      Object.values(newDoc.assets).forEach(asset => {
+        if (asset.type === 'font') {
+          registerFontAsset(asset);
+        }
+      });
     }
   }, [activePageId]);
 

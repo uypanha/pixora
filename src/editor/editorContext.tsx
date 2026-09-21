@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { Tool, Viewport, DragState, SmartGuideLine } from '../types/editor';
+import { Tool, Viewport, DragState, SmartGuideLine, ContextMenuState } from '../types/editor';
 import { PixoraObject } from '../types/document';
 import { RectBounds } from '../utils/math';
 
@@ -27,6 +27,8 @@ interface EditorContextType {
   setActiveGuides: (guides: SmartGuideLine[]) => void;
   clipboard: PixoraObject[] | null;
   setClipboard: (objs: PixoraObject[] | null) => void;
+  contextMenu: ContextMenuState | null;
+  setContextMenu: (menu: ContextMenuState | null) => void;
   mobileActiveTab: 'layers' | 'add' | 'properties' | null;
   setMobileActiveTab: (tab: 'layers' | 'add' | 'properties' | null) => void;
   isMobileMenuOpen: boolean;
@@ -48,6 +50,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [activeGuides, setActiveGuides] = useState<SmartGuideLine[]>([]);
   const [clipboard, setClipboard] = useState<PixoraObject[] | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [mobileActiveTab, setMobileActiveTab] = useState<'layers' | 'add' | 'properties' | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -141,6 +144,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       setActiveGuides,
       clipboard,
       setClipboard,
+      contextMenu,
+      setContextMenu,
       mobileActiveTab,
       setMobileActiveTab,
       isMobileMenuOpen,
@@ -159,6 +164,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       dragState,
       activeGuides,
       clipboard,
+      contextMenu,
       mobileActiveTab,
       isMobileMenuOpen,
       isExportModalOpen,

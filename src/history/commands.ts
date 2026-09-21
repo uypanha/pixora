@@ -1,5 +1,6 @@
 import { PixoraDocument, PixoraObject, GroupObject, PixoraAsset } from '../types/document';
 import { ObjectTransformSnapshot } from '../types/editor';
+import { getBoundingBox } from '../utils/math';
 
 export interface HistoryCommand {
   description: string;
@@ -202,6 +203,41 @@ export class DeleteObjectsCommand implements HistoryCommand {
 /**
  * Transform objects command (Move, Resize, Rotate)
  */
+function updateParentGroupBounds(objects: Record<string, PixoraObject>, modifiedIds: string[]) {
+  const affectedGroupIds = new Set<string>();
+  for (const id of modifiedIds) {
+    let curr = objects[id];
+    while (curr && curr.parentId && objects[curr.parentId]) {
+      const parent = objects[curr.parentId];
+      if (parent.type === 'group') {
+        affectedGroupIds.add(parent.id);
+        curr = parent;
+      } else {
+        break;
+      }
+    }
+  }
+
+  for (const groupId of affectedGroupIds) {
+    const group = objects[groupId];
+    if (group && group.type === 'group') {
+      const children = (group.childIds || []).map(cid => objects[cid]).filter(Boolean);
+      if (children.length > 0) {
+        const bbox = getBoundingBox(children);
+        if (bbox) {
+          objects[groupId] = {
+            ...group,
+            x: bbox.x,
+            y: bbox.y,
+            width: bbox.width,
+            height: bbox.height,
+          };
+        }
+      }
+    }
+  }
+}
+
 export class TransformObjectsCommand implements HistoryCommand {
   description: string;
 
@@ -224,6 +260,7 @@ export class TransformObjectsCommand implements HistoryCommand {
         };
       }
     }
+    updateParentGroupBounds(newObjects, Object.keys(this.nextSnapshots));
 
     return {
       ...doc,
@@ -242,6 +279,7 @@ export class TransformObjectsCommand implements HistoryCommand {
         };
       }
     }
+    updateParentGroupBounds(newObjects, Object.keys(this.prevSnapshots));
 
     return {
       ...doc,

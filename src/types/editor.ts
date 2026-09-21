@@ -55,6 +55,12 @@ export interface SmartGuideLine {
   end: number;
 }
 
+export interface ContextMenuState {
+  x: number;
+  y: number;
+  targetId?: string;
+}
+
 export interface EditorState {
   activePageId: string;
   selectedIds: string[];
@@ -65,6 +71,7 @@ export interface EditorState {
   dragState: DragState | null;
   activeGuides: SmartGuideLine[];
   clipboard: PixoraObject[] | null;
+  contextMenu: ContextMenuState | null;
   mobileActiveTab: 'layers' | 'add' | 'properties' | null;
   isMobileMenuOpen: boolean;
   autosaveStatus: 'saved' | 'saving' | 'unsaved';

@@ -10,6 +10,7 @@ import { PropertiesPanel } from './properties/PropertiesPanel';
 import { Launcher } from './components/launcher/Launcher';
 import { ExportModal } from './export/ExportModal';
 import { ShortcutsModal } from './components/modals/ShortcutsModal';
+import { ContextMenu } from './components/menu/ContextMenu';
 import { MobileTopBar } from './mobile/MobileTopBar';
 import { MobileBottomNav } from './mobile/MobileBottomNav';
 import { MobileFloatingTools } from './mobile/MobileFloatingTools';
@@ -135,6 +136,7 @@ function EditorApp() {
 
       <ExportModal />
       <ShortcutsModal />
+      <ContextMenu />
     </div>
   );
 }

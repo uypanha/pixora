@@ -20,6 +20,7 @@ interface CanvasObjectProps {
   onSelect: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
   onObjectPointerDown?: (id: string, e: React.PointerEvent) => void;
   onDoubleClick?: (id: string, e: React.MouseEvent) => void;
+  onContextMenu?: (id: string, e: React.MouseEvent) => void;
   zoom: number;
 }
 
@@ -33,6 +34,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
     onSelect,
     onObjectPointerDown,
     onDoubleClick,
+    onContextMenu,
     zoom,
   }) => {
     if (!object.visible) return null;
@@ -54,6 +56,12 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
     const handleDoubleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       onDoubleClick?.(object.id, e);
+    };
+
+    const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onContextMenu?.(object.id, e);
     };
 
     // Construct drop shadow filter id if object has shadow
@@ -87,6 +95,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             transform={transform}
             opacity={opacity}
             onPointerDown={handlePointerDown}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {renderShadowFilter()}
@@ -147,6 +156,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                     onSelect={onSelect}
                     onObjectPointerDown={onObjectPointerDown}
                     onDoubleClick={onDoubleClick}
+                    onContextMenu={onContextMenu}
                     zoom={zoom}
                   />
                 );
@@ -165,6 +175,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             opacity={opacity}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {renderShadowFilter()}
@@ -193,6 +204,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             opacity={opacity}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {renderShadowFilter()}
@@ -219,6 +231,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             opacity={opacity}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {/* Invisible thicker hit box for easy clicking/touching */}
@@ -246,9 +259,9 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
 
       case 'text': {
         const text = object as TextObject;
-        const lines = text.text.split('\n');
         const fontSize = text.fontSize || 16;
         const lineHeightPx = fontSize * (text.lineHeight || 1.4);
+        const lines = (text.text || '').split('\n');
 
         let textAnchor = 'start';
         let startX = x;
@@ -267,6 +280,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             opacity={opacity}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-text"
           >
             {renderShadowFilter()}
@@ -313,6 +327,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             opacity={opacity}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {renderShadowFilter()}
@@ -374,6 +389,8 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
             transform={transform}
             opacity={opacity}
             onPointerDown={handlePointerDown}
+            onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             className="cursor-pointer"
           >
             {group.childIds.map(childId => {
@@ -390,6 +407,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                   onSelect={onSelect}
                   onObjectPointerDown={onObjectPointerDown}
                   onDoubleClick={onDoubleClick}
+                  onContextMenu={onContextMenu}
                   zoom={zoom}
                 />
               );

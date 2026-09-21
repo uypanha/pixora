@@ -50,6 +50,7 @@ export const Canvas: React.FC = () => {
     setDragState,
     activeGuides,
     setActiveGuides,
+    setContextMenu,
   } = useEditor();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -135,11 +136,11 @@ export const Canvas: React.FC = () => {
     (id: string, e: React.MouseEvent | React.TouchEvent) => {
       if (activeTool === 'hand' || isSpacePressed.current) return;
 
-      const targetId = getSelectableTargetId(id, document.objects, e.metaKey || e.ctrlKey);
+      const targetId = getSelectableTargetId(id, document.objects, selectedIds, e.metaKey || e.ctrlKey);
       const isShift = 'shiftKey' in e ? e.shiftKey : false;
       selectObject(targetId, isShift);
     },
-    [activeTool, selectObject, document.objects]
+    [activeTool, selectObject, document.objects, selectedIds]
   );
 
   // Object direct pointer down (Select & drag initiation)
@@ -151,7 +152,7 @@ export const Canvas: React.FC = () => {
       e.stopPropagation();
       e.currentTarget.setPointerCapture?.(e.pointerId);
 
-      const targetId = getSelectableTargetId(id, document.objects, e.metaKey || e.ctrlKey);
+      const targetId = getSelectableTargetId(id, document.objects, selectedIds, e.metaKey || e.ctrlKey);
       const isShift = e.shiftKey;
       let effectiveSelectedIds = selectedIds;
 
@@ -204,12 +205,43 @@ export const Canvas: React.FC = () => {
 
   const handleObjectDoubleClick = useCallback(
     (id: string) => {
+      setSelectedIds([id]);
       const obj = document.objects[id];
       if (obj && obj.type === 'text') {
         setEditingTextId(id);
       }
     },
-    [document.objects, setEditingTextId]
+    [document.objects, setSelectedIds, setEditingTextId]
+  );
+
+  // Object right-click context menu
+  const handleObjectContextMenu = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = getSelectableTargetId(id, document.objects, selectedIds, e.metaKey || e.ctrlKey);
+      if (!selectedIds.includes(targetId)) {
+        setSelectedIds([targetId]);
+      }
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        targetId,
+      });
+    },
+    [document.objects, selectedIds, setSelectedIds, setContextMenu]
+  );
+
+  // Background right-click context menu
+  const handleCanvasContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+      });
+    },
+    [setContextMenu]
   );
 
   // Background PointerDown: start panning, marquee selection, or shape drawing
@@ -652,6 +684,7 @@ export const Canvas: React.FC = () => {
       className={`relative w-full h-full overflow-hidden select-none touch-none bg-pixora-bg ${cursorClass}`}
       style={{ touchAction: 'none' }}
       onWheel={handleWheel}
+      onContextMenu={handleCanvasContextMenu}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -691,6 +724,7 @@ export const Canvas: React.FC = () => {
                 onSelect={handleObjectSelect}
                 onObjectPointerDown={handleObjectPointerDown}
                 onDoubleClick={handleObjectDoubleClick}
+                onContextMenu={handleObjectContextMenu}
                 zoom={viewport.zoom}
               />
             );
@@ -706,6 +740,12 @@ export const Canvas: React.FC = () => {
               onHandlePointerDown={handleResizePointerDown}
               onRotatePointerDown={handleRotatePointerDown}
               onMovePointerDown={handleMovePointerDown}
+              onContextMenu={e => {
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                });
+              }}
             />
           )}
 

@@ -1,40 +1,189 @@
-import React from 'react';
-import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { AlignLeft, AlignCenter, AlignRight, Upload, Type as TypeIcon } from 'lucide-react';
 import { TextObject } from '../../types/document';
 import { useDocument } from '../../document/documentContext';
+import {
+  POPULAR_FONTS,
+  loadGoogleFont,
+  loadCustomFontFile,
+  registerFontAsset,
+} from '../../utils/fontLoader';
 
 interface TypographySectionProps {
   object: TextObject;
 }
 
 export const TypographySection: React.FC<TypographySectionProps> = ({ object }) => {
-  const { updateObjectProperties } = useDocument();
+  const { document, updateObjectProperties, addAsset } = useDocument();
+  const fontFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isCustomInput, setIsCustomInput] = useState(false);
+  const [customFontName, setCustomFontName] = useState(object.fontFamily || '');
+
+  // Register any project fonts in document.assets
+  useEffect(() => {
+    for (const asset of Object.values(document.assets)) {
+      if (asset.type === 'font') {
+        registerFontAsset(asset);
+      }
+    }
+  }, [document.assets]);
+
+  useEffect(() => {
+    if (object.fontFamily) {
+      loadGoogleFont(object.fontFamily);
+    }
+  }, [object.fontFamily]);
 
   const handleUpdate = (props: Partial<TextObject>, desc: string) => {
     updateObjectProperties(object.id, props, desc);
   };
 
+  const handleFontSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '__custom__') {
+      setIsCustomInput(true);
+      return;
+    }
+    setIsCustomInput(false);
+    loadGoogleFont(val);
+    handleUpdate({ fontFamily: val }, 'Change font family');
+  };
+
+  const handleCustomFontSubmit = () => {
+    const trimmed = customFontName.trim();
+    if (trimmed) {
+      loadGoogleFont(trimmed);
+      handleUpdate({ fontFamily: trimmed }, 'Change custom font family');
+    }
+  };
+
+  const handleFontFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { fontName, asset } = await loadCustomFontFile(file);
+      addAsset(asset);
+      handleUpdate({ fontFamily: fontName }, 'Set uploaded font');
+      setIsCustomInput(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to load font file.');
+    }
+    e.target.value = '';
+  };
+
+  // Extract any uploaded custom font names from document.assets
+  const customProjectFonts = Object.values(document.assets)
+    .filter(a => a.type === 'font')
+    .map(a => a.name);
+
   return (
     <div className="border-b border-pixora-border p-3 space-y-3">
-      <div className="text-xs font-semibold text-pixora-text-muted uppercase tracking-wider">
-        Typography
+      <div className="flex items-center justify-between text-xs font-semibold text-pixora-text-muted uppercase tracking-wider">
+        <span>Typography</span>
+        <button
+          onClick={() => fontFileInputRef.current?.click()}
+          title="Upload local font file (.ttf, .otf, .woff, .woff2)"
+          className="flex items-center space-x-1 text-[11px] normal-case text-pixora-accent hover:text-indigo-300 transition-colors cursor-pointer"
+        >
+          <Upload size={12} />
+          <span>Upload font</span>
+        </button>
       </div>
 
-      {/* Font Family */}
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-pixora-text-dim">Font</span>
-        <select
-          value={object.fontFamily || 'Inter'}
-          onChange={e => handleUpdate({ fontFamily: e.target.value }, 'Change font family')}
-          className="bg-pixora-elevated text-pixora-text border border-pixora-border rounded px-2 py-1 outline-none text-xs w-36"
-        >
-          <option value="Inter">Inter</option>
-          <option value="Roboto">Roboto</option>
-          <option value="system-ui">System UI</option>
-          <option value="Georgia">Georgia</option>
-          <option value="JetBrains Mono">JetBrains Mono</option>
-          <option value="Courier New">Courier</option>
-        </select>
+      <input
+        ref={fontFileInputRef}
+        type="file"
+        accept=".ttf,.otf,.woff,.woff2"
+        className="hidden"
+        onChange={handleFontFileUpload}
+      />
+
+      {/* Font Family Selector / Custom Input */}
+      <div className="space-y-1.5 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-pixora-text-dim">Font Family</span>
+          <button
+            onClick={() => setIsCustomInput(!isCustomInput)}
+            className="text-[10px] text-pixora-text-dim hover:text-white transition-colors"
+          >
+            {isCustomInput ? 'Presets' : 'Type name...'}
+          </button>
+        </div>
+
+        {isCustomInput ? (
+          <div className="flex items-center space-x-1 bg-pixora-elevated rounded border border-pixora-border px-2 py-1 focus-within:border-pixora-selection">
+            <TypeIcon size={13} className="text-pixora-text-dim shrink-0" />
+            <input
+              type="text"
+              placeholder="e.g. Poppins, Georgia, Oswald"
+              value={customFontName}
+              onChange={e => setCustomFontName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCustomFontSubmit();
+              }}
+              onBlur={handleCustomFontSubmit}
+              className="bg-transparent text-pixora-text text-xs outline-none w-full"
+            />
+          </div>
+        ) : (
+          <select
+            value={object.fontFamily || 'Inter'}
+            onChange={handleFontSelectChange}
+            className="bg-pixora-elevated text-pixora-text border border-pixora-border rounded px-2 py-1.5 outline-none text-xs w-full"
+          >
+            {customProjectFonts.length > 0 && (
+              <optgroup label="Uploaded Fonts">
+                {customProjectFonts.map(name => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+
+            <optgroup label="Sans-Serif">
+              {POPULAR_FONTS.filter(f => f.category === 'Sans-Serif').map(f => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label="Serif">
+              {POPULAR_FONTS.filter(f => f.category === 'Serif').map(f => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label="Monospace">
+              {POPULAR_FONTS.filter(f => f.category === 'Monospace').map(f => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label="Display">
+              {POPULAR_FONTS.filter(f => f.category === 'Display').map(f => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label="System">
+              {POPULAR_FONTS.filter(f => f.category === 'System').map(f => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+
+            <option value="__custom__">+ Custom Font Name...</option>
+          </select>
+        )}
       </div>
 
       {/* Weight & Size */}

@@ -9,6 +9,7 @@ interface SelectionBoxProps {
   onHandlePointerDown: (handle: DragHandle, e: React.PointerEvent) => void;
   onRotatePointerDown: (e: React.PointerEvent) => void;
   onMovePointerDown: (e: React.PointerEvent) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 export const SelectionBox: React.FC<SelectionBoxProps> = ({
@@ -19,6 +20,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   onHandlePointerDown,
   onRotatePointerDown,
   onMovePointerDown,
+  onContextMenu,
 }) => {
   const { x, y, width, height } = bounds;
   const cx = x + width / 2;
@@ -56,7 +58,13 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         fill="transparent"
         style={{ touchAction: 'none' }}
         className="cursor-move"
+        onContextMenu={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu?.(e);
+        }}
         onPointerDown={e => {
+          if (e.button !== 0) return;
           e.currentTarget.setPointerCapture?.(e.pointerId);
           onMovePointerDown(e);
         }}
