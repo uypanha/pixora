@@ -46,8 +46,13 @@ function EditorApp() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Check for local project recovery on startup
+  const hasCheckedRecoveryRef = useRef(false);
+
+  // Check for local project recovery on startup (run once only on mount)
   useEffect(() => {
+    if (hasCheckedRecoveryRef.current) return;
+    hasCheckedRecoveryRef.current = true;
+
     async function checkLocalRecovery() {
       const recovered = await loadActiveProject();
       if (recovered && Object.keys(recovered.objects).length > 0) {

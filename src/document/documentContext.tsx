@@ -95,9 +95,12 @@ export function DocumentProvider({
       historyRef.current.clear();
       setHistoryVersion(v => v + 1);
     }
-    if (!newDoc.pages.some(p => p.id === activePageId)) {
-      setActivePageId(newDoc.pages[0]?.id || '');
-    }
+    setActivePageId(prevActiveId => {
+      if (newDoc.pages.some(p => p.id === prevActiveId)) {
+        return prevActiveId;
+      }
+      return newDoc.pages[0]?.id || '';
+    });
     if (newDoc.assets) {
       Object.values(newDoc.assets).forEach(asset => {
         if (asset.type === 'font') {
@@ -105,7 +108,7 @@ export function DocumentProvider({
         }
       });
     }
-  }, [activePageId]);
+  }, []);
 
   const undo = useCallback(() => {
     const updated = historyRef.current.undo(documentRef.current);
