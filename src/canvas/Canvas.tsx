@@ -782,7 +782,17 @@ export const Canvas: React.FC = () => {
             object={textObj}
             viewport={viewport}
             onCommit={newText => {
-              updateObjectProperties(textObj.id, { text: newText }, 'Edit text');
+              const updates: Partial<TextObject> = { text: newText };
+              if (
+                !textObj.name ||
+                textObj.name === 'Text' ||
+                textObj.name === 'New Text' ||
+                textObj.name === textObj.text ||
+                textObj.name === 'Double-click to edit'
+              ) {
+                updates.name = newText.slice(0, 50) || 'Text';
+              }
+              updateObjectProperties(textObj.id, updates, 'Edit text');
             }}
             onClose={() => setEditingTextId(null)}
           />

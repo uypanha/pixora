@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Eye,
   EyeOff,
@@ -45,6 +45,10 @@ export const LayerItem: React.FC<LayerItemProps> = ({
   const [isRenaming, setIsRenaming] = useState(false);
   const [name, setName] = useState(object.name);
 
+  useEffect(() => {
+    setName(object.name);
+  }, [object.name]);
+
   const isSelected = selectedIds.includes(object.id);
   const isHovered = hoveredId === object.id;
   const isDragging = dragState.draggingId === object.id;
@@ -87,8 +91,13 @@ export const LayerItem: React.FC<LayerItemProps> = ({
   };
 
   const handleFinishRename = () => {
-    if (name.trim()) {
-      updateObjectProperties(object.id, { name: name.trim() }, 'Rename layer');
+    const trimmed = name.trim();
+    if (trimmed) {
+      const updates: Partial<PixoraObject> = { name: trimmed };
+      if (object.type === 'text') {
+        (updates as any).text = trimmed;
+      }
+      updateObjectProperties(object.id, updates, 'Rename layer');
     }
     setIsRenaming(false);
   };
@@ -219,7 +228,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
               className="truncate select-none"
               title="Double click to rename"
             >
-              {object.name}
+              {object.type === 'text' && (object as any).text ? (object as any).text : object.name}
             </span>
           )}
         </div>

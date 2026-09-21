@@ -9,11 +9,11 @@ import { StrokeSection } from './sections/StrokeSection';
 import { TypographySection } from './sections/TypographySection';
 import { EffectsSection } from './sections/EffectsSection';
 import { ImageSection } from './sections/ImageSection';
-import { TextObject, ImageObject } from '../types/document';
+import { TextObject, ImageObject, PixoraObject } from '../types/document';
 import { ColorPicker } from '../components/color/ColorPicker';
 
 export const PropertiesPanel: React.FC = () => {
-  const { document, updateSettings } = useDocument();
+  const { document, updateSettings, updateObjectProperties } = useDocument();
   const { selectedIds } = useEditor();
 
   const selectedObjects = selectedIds.map(id => document.objects[id]).filter(Boolean);
@@ -25,12 +25,23 @@ export const PropertiesPanel: React.FC = () => {
         <>
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-pixora-border">
-            <div className="flex items-center space-x-1.5 truncate">
-              <span className="text-xs font-semibold text-white truncate">
-                {primaryObject.name}
-              </span>
+            <div className="flex items-center space-x-1.5 truncate flex-1 mr-2">
+              <input
+                type="text"
+                value={primaryObject.name}
+                onChange={e => {
+                  const val = e.target.value;
+                  const updates: Partial<PixoraObject> = { name: val };
+                  if (primaryObject.type === 'text') {
+                    (updates as any).text = val;
+                  }
+                  updateObjectProperties(primaryObject.id, updates, 'Rename layer');
+                }}
+                className="bg-transparent hover:bg-pixora-elevated focus:bg-pixora-elevated text-xs font-semibold text-white px-1 py-0.5 rounded border border-transparent focus:border-pixora-selection outline-none transition-colors truncate w-full"
+                title="Click to rename layer"
+              />
             </div>
-            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-pixora-elevated text-pixora-selection border border-pixora-border">
+            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-pixora-elevated text-pixora-selection border border-pixora-border shrink-0">
               {primaryObject.type}
             </span>
           </div>

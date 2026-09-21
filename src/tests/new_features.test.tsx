@@ -6,7 +6,7 @@ import { loadGoogleFont, registerFontAsset } from '../utils/fontLoader';
 import { PixoraDocument, RectangleObject, GroupObject, TextObject, PixoraAsset } from '../types/document';
 import { TransformObjectsCommand } from '../history/commands';
 import { ContextMenu } from '../components/menu/ContextMenu';
-import { DocumentProvider } from '../document/documentContext';
+import { DocumentProvider, useDocument } from '../document/documentContext';
 import { EditorProvider, useEditor } from '../editor/editorContext';
 import { createDefaultProject } from '../document/defaultProject';
 import { createText } from '../document/objectFactory';
@@ -435,5 +435,46 @@ describe('Text Layer Inline Editing and Layer Reordering', () => {
     );
     expect(container2.querySelector('text')).toBeNull();
   });
+
+  it('editing a text layer in properties panel updates text and name simultaneously', () => {
+    const textObj = createText(0, 0, 'Initial Content');
+    let capturedDoc: any = null;
+
+    const TestComponent = () => {
+      const { document, updateObjectProperties } = useDocument();
+      capturedDoc = document;
+      return (
+        <button
+          onClick={() => {
+            const newText = 'Brand New Title';
+            updateObjectProperties(textObj.id, {
+              name: newText,
+              text: newText,
+            });
+          }}
+        >
+          Update Text Layer
+        </button>
+      );
+    };
+
+    render(
+      <DocumentProvider
+        initialDocument={{
+          ...createDefaultProject(),
+          objects: { [textObj.id]: textObj },
+          pages: [{ id: 'p1', name: 'Page 1', childIds: [textObj.id] }],
+        }}
+      >
+        <TestComponent />
+      </DocumentProvider>
+    );
+
+    expect(capturedDoc.objects[textObj.id].text).toBe('Initial Content');
+    fireEvent.click(screen.getByText('Update Text Layer'));
+    expect(capturedDoc.objects[textObj.id].text).toBe('Brand New Title');
+    expect(capturedDoc.objects[textObj.id].name).toBe('Brand New Title');
+  });
 });
+
 

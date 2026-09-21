@@ -17,10 +17,15 @@ interface TypographySectionProps {
 
 export const TypographySection: React.FC<TypographySectionProps> = ({ object }) => {
   const { document, updateObjectProperties, addAsset } = useDocument();
-  const { setEditingTextId } = useEditor();
+  const { editingTextId, setEditingTextId } = useEditor();
   const fontFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customFontName, setCustomFontName] = useState(object.fontFamily || '');
+  const [textVal, setTextVal] = useState(object.text || '');
+
+  useEffect(() => {
+    setTextVal(object.text || '');
+  }, [object.text]);
 
   // Register any project fonts in document.assets
   useEffect(() => {
@@ -106,17 +111,34 @@ export const TypographySection: React.FC<TypographySectionProps> = ({ object }) 
         <div className="flex items-center justify-between">
           <span className="text-pixora-text-dim">Content</span>
           <button
-            onClick={() => setEditingTextId(object.id)}
+            onClick={() => setEditingTextId(editingTextId === object.id ? null : object.id)}
             className="text-[10px] text-pixora-accent hover:text-indigo-300 transition-colors"
             title="Double-click canvas to edit inline"
           >
-            Edit on canvas
+            {editingTextId === object.id ? 'Done' : 'Edit on canvas'}
           </button>
         </div>
         <textarea
-          value={object.text || ''}
-          onChange={e => handleUpdate({ text: e.target.value }, 'Change text content')}
-          rows={Math.min(6, Math.max(2, (object.text || '').split('\n').length))}
+          value={textVal}
+          onFocus={() => {
+            if (editingTextId) setEditingTextId(null);
+          }}
+          onChange={e => {
+            const val = e.target.value;
+            setTextVal(val);
+            const updates: Partial<TextObject> = { text: val };
+            if (
+              !object.name ||
+              object.name === 'Text' ||
+              object.name === 'New Text' ||
+              object.name === object.text ||
+              object.name === 'Double-click to edit'
+            ) {
+              updates.name = val.slice(0, 50) || 'Text';
+            }
+            handleUpdate(updates, 'Change text content');
+          }}
+          rows={Math.min(6, Math.max(2, textVal.split('\n').length))}
           placeholder="Type text..."
           className="w-full bg-pixora-elevated text-pixora-text border border-pixora-border rounded p-2 outline-none text-xs focus:border-pixora-selection resize-y font-sans leading-relaxed"
         />
