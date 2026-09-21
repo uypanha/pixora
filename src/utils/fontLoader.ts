@@ -3,11 +3,21 @@ import { generateId } from './id';
 
 export interface FontOption {
   name: string;
-  category: 'Sans-Serif' | 'Serif' | 'Monospace' | 'Display' | 'System' | 'Custom';
+  category: 'Sans-Serif' | 'Serif' | 'Monospace' | 'Display' | 'Khmer' | 'System' | 'Custom';
   isGoogleFont?: boolean;
 }
 
 export const POPULAR_FONTS: FontOption[] = [
+  // Khmer Fonts
+  { name: 'Kantumruy Pro', category: 'Khmer', isGoogleFont: true },
+  { name: 'Battambang', category: 'Khmer', isGoogleFont: true },
+  { name: 'Siemreap', category: 'Khmer', isGoogleFont: true },
+  { name: 'Moul', category: 'Khmer', isGoogleFont: true },
+  { name: 'Bayon', category: 'Khmer', isGoogleFont: true },
+  { name: 'Preahvihear', category: 'Khmer', isGoogleFont: true },
+  { name: 'Koulen', category: 'Khmer', isGoogleFont: true },
+  { name: 'Hanuman', category: 'Khmer', isGoogleFont: true },
+
   // System / Standard
   { name: 'Inter', category: 'Sans-Serif', isGoogleFont: true },
   { name: 'Roboto', category: 'Sans-Serif', isGoogleFont: true },

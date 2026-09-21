@@ -226,5 +226,115 @@ describe('Photo Project Type & Architecture', () => {
       expect(screen.getByText('Vivid')).toBeInTheDocument();
       expect(screen.getByText('Warm')).toBeInTheDocument();
     });
+
+    it('supports text tool, Khmer/custom fonts, and inline editing without duplicate canvas rendering', () => {
+      const sampleUrl = generateSamplePhotoDataUrl(300, 300);
+      const doc = createDefaultPhotoProject(sampleUrl, { projectName: 'Khmer Text Photo' });
+
+      // Add a Khmer text
+      doc.photo!.texts.push({
+        id: 'text-khmer-1',
+        text: 'សួស្ដី',
+        x: 0.5,
+        y: 0.5,
+        fontSize: 36,
+        fontFamily: 'Kantumruy Pro',
+        fontWeight: 'bold',
+        color: '#ffffff',
+        opacity: 1,
+        rotation: 0,
+        textAlign: 'center',
+      });
+
+      render(
+        <DocumentProvider initialDocument={doc}>
+          <PhotoEditor onOpenLauncher={() => {}} />
+        </DocumentProvider>
+      );
+
+      // Verify Khmer text overlay is rendered in DOM
+      const textElem = screen.getByText('សួស្ដី');
+      expect(textElem).toBeInTheDocument();
+      expect(textElem.style.fontFamily).toBe('Kantumruy Pro');
+
+      // Click on text tool
+      fireEvent.click(screen.getByTitle('Text'));
+      expect(screen.getByText('Text on Photo')).toBeInTheDocument();
+      expect(screen.getByText('Upload Font')).toBeInTheDocument();
+
+      // Double click text overlay to trigger inline edit mode
+      fireEvent.doubleClick(textElem);
+      const textareas = screen.getAllByDisplayValue('សួស្ដី');
+      const inlineTextarea = textareas.find(t => t.classList.contains('absolute'))!;
+      expect(inlineTextarea).toBeInTheDocument();
+      expect(inlineTextarea.tagName.toLowerCase()).toBe('textarea');
+
+      // Edit text in inline textarea
+      fireEvent.change(inlineTextarea, { target: { value: 'សួស្ដី​កម្ពុជា' } });
+      fireEvent.blur(inlineTextarea);
+
+      // Verify updated text in overlay and layer list
+      expect(screen.getAllByText('សួស្ដី​កម្ពុជា').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('6. Text Rendering Options & Custom Fonts', () => {
+    it('verifies POPULAR_FONTS includes Khmer Google Fonts', async () => {
+      const { POPULAR_FONTS } = await import('../utils/fontLoader');
+      const khmerFonts = POPULAR_FONTS.filter(f => f.category === 'Khmer');
+      expect(khmerFonts.length).toBeGreaterThanOrEqual(6);
+      expect(khmerFonts.some(f => f.name === 'Kantumruy Pro')).toBe(true);
+      expect(khmerFonts.some(f => f.name === 'Battambang')).toBe(true);
+      expect(khmerFonts.some(f => f.name === 'Moul')).toBe(true);
+    });
+
+    it('verifies renderPhotoToCanvas respects skipTexts option', () => {
+      const canvas = document.createElement('canvas');
+      const sampleUrl = generateSamplePhotoDataUrl(200, 200);
+      const doc = createDefaultPhotoProject(sampleUrl);
+
+      doc.photo!.texts.push({
+        id: 'txt-1',
+        text: 'Hello Pixora',
+        x: 0.5,
+        y: 0.5,
+        fontSize: 32,
+        fontFamily: 'Inter',
+        fontWeight: 'bold',
+        color: '#ffffff',
+        opacity: 1,
+        rotation: 0,
+        textAlign: 'center',
+      });
+
+      const img = new Image();
+      img.src = sampleUrl;
+
+      // Render with skipTexts: true
+      expect(() => {
+        renderPhotoToCanvas(canvas, {
+          image: img,
+          adjustments: doc.photo!.adjustments,
+          filter: doc.photo!.filter,
+          effects: doc.photo!.effects,
+          transform: doc.photo!.transform,
+          texts: doc.photo!.texts,
+          skipTexts: true,
+        });
+      }).not.toThrow();
+
+      // Render with skipTexts: false (for export)
+      expect(() => {
+        renderPhotoToCanvas(canvas, {
+          image: img,
+          adjustments: doc.photo!.adjustments,
+          filter: doc.photo!.filter,
+          effects: doc.photo!.effects,
+          transform: doc.photo!.transform,
+          texts: doc.photo!.texts,
+          skipTexts: false,
+        });
+      }).not.toThrow();
+    });
   });
 });

@@ -56,6 +56,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
 
   // Selected Text Overlay
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   // Drawing tool options
   const [drawTool, setDrawTool] = useState<'brush' | 'eraser'>('brush');
@@ -338,6 +339,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
       'Add Text Overlay'
     );
     setSelectedTextId(newText.id);
+    setEditingTextId(newText.id);
   };
 
   const handleUpdateText = (id: string, updates: Partial<PhotoTextOverlay>) => {
@@ -454,6 +456,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
           setDrawSize={setDrawSize}
           drawOpacity={drawOpacity}
           setDrawOpacity={setDrawOpacity}
+          editingTextId={editingTextId}
+          onSetEditingTextId={setEditingTextId}
         />
       ) : (
         <div className="flex-1 flex overflow-hidden">
@@ -480,6 +484,10 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
             selectedTextId={selectedTextId}
             onSelectText={setSelectedTextId}
             onUpdateTextPosition={handleUpdateTextPosition}
+            onUpdateText={handleUpdateText}
+            onSelectTool={setActiveTool}
+            editingTextId={editingTextId}
+            onSetEditingTextId={setEditingTextId}
             brushRadius={brushRadius}
             drawTool={drawTool}
             drawColor={drawColor}
@@ -556,6 +564,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
                 onAddText={handleAddText}
                 onUpdateText={handleUpdateText}
                 onRemoveText={handleRemoveText}
+                onStartEditText={setEditingTextId}
               />
             )}
           </div>

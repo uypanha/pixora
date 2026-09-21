@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Download, FileImage } from 'lucide-react';
 import { PhotoProjectState, PixoraAsset } from '../../../types/document';
 import { renderPhotoToCanvas } from '../rendering/photoRenderer';
+import { loadGoogleFont } from '../../../utils/fontLoader';
 
 interface PhotoExportModalProps {
   isOpen: boolean;
@@ -53,6 +54,20 @@ export const PhotoExportModal: React.FC<PhotoExportModalProps> = ({
         img.onerror = reject;
         img.src = sourceAsset.dataUrl;
       });
+
+      // Preload Google Fonts and wait for fonts to be ready
+      for (const t of photo.texts) {
+        if (t.fontFamily) {
+          loadGoogleFont(t.fontFamily);
+        }
+      }
+      if (typeof document !== 'undefined' && document.fonts) {
+        try {
+          await document.fonts.ready;
+        } catch {
+          // ignore font readiness error
+        }
+      }
 
       const offscreen = document.createElement('canvas');
       renderPhotoToCanvas(offscreen, {
