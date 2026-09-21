@@ -44,7 +44,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     redo,
     setDocument,
     addObject,
-    addAsset,
   } = useDocument();
 
   const {
@@ -54,6 +53,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     zoomIn,
     zoomOut,
     resetZoom,
+    setSelectedIds,
     setIsExportModalOpen,
     setIsShortcutsModalOpen,
   } = useEditor();
@@ -86,8 +86,8 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     if (!file) return;
     try {
       const { asset, imageObject } = await importImageFile(file, 200, 200);
-      addAsset(asset);
-      addObject(imageObject);
+      addObject(imageObject, null, asset);
+      setSelectedIds([imageObject.id]);
       setActiveTool('select');
     } catch (err: any) {
       alert(err.message || 'Failed to import image.');

@@ -33,7 +33,8 @@ interface DocumentContextType {
   setDocument: (doc: PixoraDocument, resetHistory?: boolean) => void;
   undo: () => void;
   redo: () => void;
-  addObject: (object: PixoraObject, parentId?: string | null) => void;
+  addObject: (object: PixoraObject, parentId?: string | null, asset?: PixoraAsset) => void;
+  addImageAsset: (asset: PixoraAsset, object: PixoraObject, parentId?: string | null) => void;
   deleteObjects: (objectIds: string[]) => void;
   transformObjects: (
     prevSnapshots: Record<string, ObjectTransformSnapshot>,
@@ -43,8 +44,10 @@ interface DocumentContextType {
   updateObjectProperties: (
     id: string,
     props: Partial<PixoraObject>,
-    description?: string
+    description?: string,
+    asset?: PixoraAsset
   ) => void;
+  updateObjectsTransient: (updates: Record<string, Partial<PixoraObject>>) => void;
   reorderLayers: (
     pageId: string,
     parentId: string | null,
@@ -74,6 +77,9 @@ export function DocumentProvider({
   const [document, setDocumentState] = useState<PixoraDocument>(
     () => initialDocument || createDefaultProject()
   );
+  const documentRef = useRef<PixoraDocument>(document);
+  documentRef.current = document;
+
   const [activePageId, setActivePageId] = useState<string>(
     () => document.pages[0]?.id || 'page_1'
   );
@@ -82,6 +88,7 @@ export function DocumentProvider({
   const [historyVersion, setHistoryVersion] = useState(0);
 
   const setDocument = useCallback((newDoc: PixoraDocument, resetHistory = true) => {
+    documentRef.current = newDoc;
     setDocumentState(newDoc);
     if (resetHistory) {
       historyRef.current.clear();
@@ -93,40 +100,51 @@ export function DocumentProvider({
   }, [activePageId]);
 
   const undo = useCallback(() => {
-    const updated = historyRef.current.undo(document);
+    const updated = historyRef.current.undo(documentRef.current);
     if (updated) {
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     }
-  }, [document]);
+  }, []);
 
   const redo = useCallback(() => {
-    const updated = historyRef.current.redo(document);
+    const updated = historyRef.current.redo(documentRef.current);
     if (updated) {
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     }
-  }, [document]);
+  }, []);
 
   const addObject = useCallback(
-    (object: PixoraObject, parentId?: string | null) => {
-      const cmd = new AddObjectCommand(object, activePageId, parentId);
-      const updated = historyRef.current.execute(cmd, document);
+    (object: PixoraObject, parentId?: string | null, asset?: PixoraAsset) => {
+      const cmd = new AddObjectCommand(object, activePageId, parentId, asset);
+      const updated = historyRef.current.execute(cmd, documentRef.current);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [activePageId, document]
+    [activePageId]
+  );
+
+  const addImageAsset = useCallback(
+    (asset: PixoraAsset, object: PixoraObject, parentId?: string | null) => {
+      addObject(object, parentId, asset);
+    },
+    [addObject]
   );
 
   const deleteObjects = useCallback(
     (objectIds: string[]) => {
       if (objectIds.length === 0) return;
-      const cmd = new DeleteObjectsCommand(objectIds, document);
-      const updated = historyRef.current.execute(cmd, document);
+      const cmd = new DeleteObjectsCommand(objectIds, documentRef.current);
+      const updated = historyRef.current.execute(cmd, documentRef.current);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [document]
+    []
   );
 
   const transformObjects = useCallback(
@@ -137,27 +155,56 @@ export function DocumentProvider({
     ) => {
       if (Object.keys(nextSnapshots).length === 0) return;
       const cmd = new TransformObjectsCommand(prevSnapshots, nextSnapshots, type);
-      const updated = historyRef.current.execute(cmd, document);
+      const updated = historyRef.current.execute(cmd, documentRef.current);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [document]
+    []
   );
 
   const updateObjectProperties = useCallback(
-    (id: string, props: Partial<PixoraObject>, description?: string) => {
-      const obj = document.objects[id];
+    (
+      id: string,
+      props: Partial<PixoraObject>,
+      description?: string,
+      asset?: PixoraAsset
+    ) => {
+      const currentDoc = documentRef.current;
+      const obj = currentDoc.objects[id];
       if (!obj) return;
       const prevProps: Partial<PixoraObject> = {};
       for (const key of Object.keys(props) as (keyof PixoraObject)[]) {
         (prevProps as any)[key] = (obj as any)[key];
       }
-      const cmd = new UpdatePropertyCommand(id, prevProps, props, description);
-      const updated = historyRef.current.execute(cmd, document);
+      const cmd = new UpdatePropertyCommand(id, prevProps, props, description, asset);
+      const updated = historyRef.current.execute(cmd, currentDoc);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [document]
+    []
+  );
+
+  const updateObjectsTransient = useCallback(
+    (updates: Record<string, Partial<PixoraObject>>) => {
+      if (Object.keys(updates).length === 0) return;
+      setDocumentState(doc => {
+        let changed = false;
+        const newObjects = { ...doc.objects };
+        for (const [id, patch] of Object.entries(updates)) {
+          if (newObjects[id]) {
+            newObjects[id] = { ...newObjects[id], ...patch } as PixoraObject;
+            changed = true;
+          }
+        }
+        if (!changed) return doc;
+        const next = { ...doc, objects: newObjects };
+        documentRef.current = next;
+        return next;
+      });
+    },
+    []
   );
 
   const reorderLayers = useCallback(
@@ -168,17 +215,19 @@ export function DocumentProvider({
       nextChildIds: string[]
     ) => {
       const cmd = new ReorderLayerCommand(pageId, parentId, prevChildIds, nextChildIds);
-      const updated = historyRef.current.execute(cmd, document);
+      const updated = historyRef.current.execute(cmd, documentRef.current);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [document]
+    []
   );
 
   const groupObjects = useCallback(
     (objectIds: string[]): string | null => {
       if (objectIds.length < 2) return null;
-      const targets = objectIds.map(id => document.objects[id]).filter(Boolean);
+      const currentDoc = documentRef.current;
+      const targets = objectIds.map(id => currentDoc.objects[id]).filter(Boolean);
       if (targets.length < 2) return null;
 
       const bounds = getBoundingBox(targets);
@@ -202,25 +251,28 @@ export function DocumentProvider({
       };
 
       const cmd = new GroupObjectsCommand(group, activePageId, targets[0].parentId);
-      const updated = historyRef.current.execute(cmd, document);
+      const updated = historyRef.current.execute(cmd, currentDoc);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
       return groupId;
     },
-    [activePageId, document]
+    [activePageId]
   );
 
   const ungroupObject = useCallback(
     (groupId: string) => {
-      const group = document.objects[groupId];
+      const currentDoc = documentRef.current;
+      const group = currentDoc.objects[groupId];
       if (!group || group.type !== 'group') return;
 
       const cmd = new UngroupCommand(groupId, group.childIds, activePageId, group.parentId);
-      const updated = historyRef.current.execute(cmd, document);
+      const updated = historyRef.current.execute(cmd, currentDoc);
+      documentRef.current = updated;
       setDocumentState(updated);
       setHistoryVersion(v => v + 1);
     },
-    [activePageId, document]
+    [activePageId]
   );
 
   const addPage = useCallback(
@@ -228,40 +280,49 @@ export function DocumentProvider({
       const newPageId = generateId('page');
       const newPage: Page = {
         id: newPageId,
-        name: name || `Page ${document.pages.length + 1}`,
+        name: name || `Page ${documentRef.current.pages.length + 1}`,
         childIds: [],
       };
-      setDocumentState(doc => ({
-        ...doc,
-        pages: [...doc.pages, newPage],
-        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-      }));
+      setDocumentState(doc => {
+        const next = {
+          ...doc,
+          pages: [...doc.pages, newPage],
+          metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+        };
+        documentRef.current = next;
+        return next;
+      });
       setActivePageId(newPageId);
       return newPageId;
     },
-    [document.pages.length]
+    []
   );
 
   const renamePage = useCallback((pageId: string, name: string) => {
-    setDocumentState(doc => ({
-      ...doc,
-      pages: doc.pages.map(p => (p.id === pageId ? { ...p, name } : p)),
-      metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-    }));
+    setDocumentState(doc => {
+      const next = {
+        ...doc,
+        pages: doc.pages.map(p => (p.id === pageId ? { ...p, name } : p)),
+        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+      };
+      documentRef.current = next;
+      return next;
+    });
   }, []);
 
   const duplicatePage = useCallback(
     (pageId: string): string => {
-      const pageToDup = document.pages.find(p => p.id === pageId);
+      const currentDoc = documentRef.current;
+      const pageToDup = currentDoc.pages.find(p => p.id === pageId);
       if (!pageToDup) return '';
 
       const newPageId = generateId('page');
       const idMap: Record<string, string> = {};
-      const newObjects = { ...document.objects };
+      const newObjects = { ...currentDoc.objects };
 
       // Clone objects tree
       const cloneTree = (id: string, newParentId?: string): string => {
-        const orig = document.objects[id];
+        const orig = currentDoc.objects[id];
         if (!orig) return '';
         const newId = generateId(orig.type);
         idMap[id] = newId;
@@ -289,61 +350,82 @@ export function DocumentProvider({
         backgroundColor: pageToDup.backgroundColor,
       };
 
-      setDocumentState(doc => ({
-        ...doc,
-        objects: newObjects,
-        pages: [...doc.pages, newPage],
-        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-      }));
+      setDocumentState(doc => {
+        const next = {
+          ...doc,
+          objects: newObjects,
+          pages: [...doc.pages, newPage],
+          metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+        };
+        documentRef.current = next;
+        return next;
+      });
 
       setActivePageId(newPageId);
       return newPageId;
     },
-    [document]
+    []
   );
 
   const deletePage = useCallback(
     (pageId: string) => {
-      if (document.pages.length <= 1) return; // Keep at least one page
-      const remainingPages = document.pages.filter(p => p.id !== pageId);
+      const currentDoc = documentRef.current;
+      if (currentDoc.pages.length <= 1) return; // Keep at least one page
+      const remainingPages = currentDoc.pages.filter(p => p.id !== pageId);
 
-      setDocumentState(doc => ({
-        ...doc,
-        pages: remainingPages,
-        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-      }));
+      setDocumentState(doc => {
+        const next = {
+          ...doc,
+          pages: remainingPages,
+          metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+        };
+        documentRef.current = next;
+        return next;
+      });
 
       if (activePageId === pageId) {
         setActivePageId(remainingPages[0].id);
       }
     },
-    [activePageId, document.pages]
+    [activePageId]
   );
 
   const addAsset = useCallback((asset: PixoraAsset) => {
-    setDocumentState(doc => ({
-      ...doc,
-      assets: {
-        ...doc.assets,
-        [asset.id]: asset,
-      },
-      metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-    }));
+    setDocumentState(doc => {
+      const next = {
+        ...doc,
+        assets: {
+          ...doc.assets,
+          [asset.id]: asset,
+        },
+        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+      };
+      documentRef.current = next;
+      return next;
+    });
   }, []);
 
   const updateSettings = useCallback((settings: Partial<DocumentSettings>) => {
-    setDocumentState(doc => ({
-      ...doc,
-      settings: { ...doc.settings, ...settings },
-      metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
-    }));
+    setDocumentState(doc => {
+      const next = {
+        ...doc,
+        settings: { ...doc.settings, ...settings },
+        metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+      };
+      documentRef.current = next;
+      return next;
+    });
   }, []);
 
   const updateMetadata = useCallback((meta: Partial<DocumentMetadata>) => {
-    setDocumentState(doc => ({
-      ...doc,
-      metadata: { ...doc.metadata, ...meta, updatedAt: new Date().toISOString() },
-    }));
+    setDocumentState(doc => {
+      const next = {
+        ...doc,
+        metadata: { ...doc.metadata, ...meta, updatedAt: new Date().toISOString() },
+      };
+      documentRef.current = next;
+      return next;
+    });
   }, []);
 
   const activePage = useMemo(() => {
@@ -362,9 +444,11 @@ export function DocumentProvider({
       undo,
       redo,
       addObject,
+      addImageAsset,
       deleteObjects,
       transformObjects,
       updateObjectProperties,
+      updateObjectsTransient,
       reorderLayers,
       groupObjects,
       ungroupObject,
@@ -385,9 +469,11 @@ export function DocumentProvider({
       undo,
       redo,
       addObject,
+      addImageAsset,
       deleteObjects,
       transformObjects,
       updateObjectProperties,
+      updateObjectsTransient,
       reorderLayers,
       groupObjects,
       ungroupObject,

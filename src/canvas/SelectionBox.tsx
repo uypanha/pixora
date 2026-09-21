@@ -54,8 +54,12 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         width={width}
         height={height}
         fill="transparent"
+        style={{ touchAction: 'none' }}
         className="cursor-move"
-        onPointerDown={onMovePointerDown}
+        onPointerDown={e => {
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          onMovePointerDown(e);
+        }}
       />
 
       {/* Primary selection outline */}
@@ -90,8 +94,12 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
             cy={rotHandleY}
             r={touchSize / 2}
             fill="transparent"
+            style={{ touchAction: 'none' }}
             className="cursor-grab active:cursor-grabbing"
-            onPointerDown={onRotatePointerDown}
+            onPointerDown={e => {
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              onRotatePointerDown(e);
+            }}
           />
           {/* Visual rotation circle */}
           <circle
@@ -116,8 +124,11 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
             width={touchSize}
             height={touchSize}
             fill="transparent"
-            style={{ cursor }}
-            onPointerDown={e => onHandlePointerDown(handle, e)}
+            style={{ cursor, touchAction: 'none' }}
+            onPointerDown={e => {
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              onHandlePointerDown(handle, e);
+            }}
           />
           {/* Visual handle square */}
           <rect

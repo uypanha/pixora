@@ -9,7 +9,7 @@ interface ImageSectionProps {
 }
 
 export const ImageSection: React.FC<ImageSectionProps> = ({ object }) => {
-  const { document, updateObjectProperties, addAsset } = useDocument();
+  const { document, updateObjectProperties } = useDocument();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const asset = document.assets[object.assetId];
@@ -23,8 +23,7 @@ export const ImageSection: React.FC<ImageSectionProps> = ({ object }) => {
     if (!file) return;
     try {
       const { asset: newAsset } = await importImageFile(file, object.x, object.y);
-      addAsset(newAsset);
-      updateObjectProperties(object.id, { assetId: newAsset.id }, 'Replace image');
+      updateObjectProperties(object.id, { assetId: newAsset.id }, 'Replace image', newAsset);
     } catch (err: any) {
       alert(err.message || 'Failed to replace image.');
     }

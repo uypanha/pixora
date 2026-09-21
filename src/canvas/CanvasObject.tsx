@@ -18,6 +18,7 @@ interface CanvasObjectProps {
   isSelected: boolean;
   isHovered: boolean;
   onSelect: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
+  onObjectPointerDown?: (id: string, e: React.PointerEvent) => void;
   onDoubleClick?: (id: string, e: React.MouseEvent) => void;
   zoom: number;
 }
@@ -30,6 +31,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
     isSelected,
     isHovered,
     onSelect,
+    onObjectPointerDown,
     onDoubleClick,
     zoom,
   }) => {
@@ -40,9 +42,13 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
     const cy = y + height / 2;
     const transform = rotation !== 0 ? `rotate(${rotation} ${cx} ${cy})` : undefined;
 
-    const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
+    const handlePointerDown = (e: React.PointerEvent) => {
       e.stopPropagation();
-      onSelect(object.id, e);
+      if (onObjectPointerDown) {
+        onObjectPointerDown(object.id, e);
+      } else {
+        onSelect(object.id, e);
+      }
     };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
@@ -139,6 +145,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                     isSelected={isSelected}
                     isHovered={isHovered}
                     onSelect={onSelect}
+                    onObjectPointerDown={onObjectPointerDown}
                     onDoubleClick={onDoubleClick}
                     zoom={zoom}
                   />
@@ -381,6 +388,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                   isSelected={isSelected}
                   isHovered={isHovered}
                   onSelect={onSelect}
+                  onObjectPointerDown={onObjectPointerDown}
                   onDoubleClick={onDoubleClick}
                   zoom={zoom}
                 />

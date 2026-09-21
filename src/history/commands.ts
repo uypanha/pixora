@@ -1,4 +1,4 @@
-import { PixoraDocument, PixoraObject, GroupObject } from '../types/document';
+import { PixoraDocument, PixoraObject, GroupObject, PixoraAsset } from '../types/document';
 import { ObjectTransformSnapshot } from '../types/editor';
 
 export interface HistoryCommand {
@@ -15,12 +15,14 @@ export class AddObjectCommand implements HistoryCommand {
   constructor(
     private object: PixoraObject,
     private pageId: string,
-    private parentId?: string | null
+    private parentId?: string | null,
+    private asset?: PixoraAsset
   ) {
     this.description = `Add ${object.name}`;
   }
 
   execute(doc: PixoraDocument): PixoraDocument {
+    const newAssets = this.asset ? { ...doc.assets, [this.asset.id]: this.asset } : doc.assets;
     const newObjects = { ...doc.objects, [this.object.id]: this.object };
     const newPages = doc.pages.map(page => {
       if (page.id !== this.pageId) return page;
@@ -43,6 +45,7 @@ export class AddObjectCommand implements HistoryCommand {
 
     return {
       ...doc,
+      assets: newAssets,
       objects: newObjects,
       pages: newPages,
       metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
@@ -258,7 +261,8 @@ export class UpdatePropertyCommand implements HistoryCommand {
     private objectId: string,
     private prevProps: Partial<PixoraObject>,
     private nextProps: Partial<PixoraObject>,
-    description = 'Change property'
+    description = 'Change property',
+    private asset?: PixoraAsset
   ) {
     this.description = description;
   }
@@ -266,8 +270,11 @@ export class UpdatePropertyCommand implements HistoryCommand {
   execute(doc: PixoraDocument): PixoraDocument {
     if (!doc.objects[this.objectId]) return doc;
 
+    const newAssets = this.asset ? { ...doc.assets, [this.asset.id]: this.asset } : doc.assets;
+
     return {
       ...doc,
+      assets: newAssets,
       objects: {
         ...doc.objects,
         [this.objectId]: {

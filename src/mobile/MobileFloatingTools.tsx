@@ -14,8 +14,8 @@ import { Tool } from '../types/editor';
 import { importImageFile } from '../import/imageImporter';
 
 export const MobileFloatingTools: React.FC = () => {
-  const { activeTool, setActiveTool } = useEditor();
-  const { addAsset, addObject } = useDocument();
+  const { activeTool, setActiveTool, setSelectedIds } = useEditor();
+  const { addObject } = useDocument();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,8 +23,8 @@ export const MobileFloatingTools: React.FC = () => {
     if (!file) return;
     try {
       const { asset, imageObject } = await importImageFile(file, 100, 100);
-      addAsset(asset);
-      addObject(imageObject);
+      addObject(imageObject, null, asset);
+      setSelectedIds([imageObject.id]);
       setActiveTool('select');
     } catch (err: any) {
       alert(err.message || 'Failed to import image.');

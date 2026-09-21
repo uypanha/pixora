@@ -14,6 +14,7 @@ import {
   calculateRotation,
 } from '../utils/math';
 import { snapToGrid, computeSmartSnapping } from '../utils/snap';
+import { collectMoveIds, getSelectableTargetId } from '../utils/tree';
 import {
   createFrame,
   createRectangle,
@@ -21,7 +22,7 @@ import {
   createLine,
   createText,
 } from '../document/objectFactory';
-import { TextObject } from '../types/document';
+import { TextObject, PixoraObject } from '../types/document';
 
 export const Canvas: React.FC = () => {
   const {
@@ -30,6 +31,7 @@ export const Canvas: React.FC = () => {
     addObject,
     transformObjects,
     updateObjectProperties,
+    updateObjectsTransient,
   } = useDocument();
 
   const {
@@ -48,7 +50,6 @@ export const Canvas: React.FC = () => {
     setDragState,
     activeGuides,
     setActiveGuides,
-    setMobileActiveTab,
   } = useEditor();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -134,15 +135,71 @@ export const Canvas: React.FC = () => {
     (id: string, e: React.MouseEvent | React.TouchEvent) => {
       if (activeTool === 'hand' || isSpacePressed.current) return;
 
+      const targetId = getSelectableTargetId(id, document.objects, e.metaKey || e.ctrlKey);
       const isShift = 'shiftKey' in e ? e.shiftKey : false;
-      selectObject(id, isShift);
+      selectObject(targetId, isShift);
+    },
+    [activeTool, selectObject, document.objects]
+  );
 
-      // On mobile, if tab is closed, opening properties makes editing seamless
-      if (window.innerWidth < 768) {
-        setMobileActiveTab('properties');
+  // Object direct pointer down (Select & drag initiation)
+  const handleObjectPointerDown = useCallback(
+    (id: string, e: React.PointerEvent) => {
+      if (activeTool === 'hand' || e.button === 1 || isSpacePressed.current) return;
+      if (e.button !== 0) return;
+
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+
+      const targetId = getSelectableTargetId(id, document.objects, e.metaKey || e.ctrlKey);
+      const isShift = e.shiftKey;
+      let effectiveSelectedIds = selectedIds;
+
+      if (isShift) {
+        if (selectedIds.includes(targetId)) {
+          effectiveSelectedIds = selectedIds.filter(item => item !== targetId);
+          setSelectedIds(effectiveSelectedIds);
+          return;
+        } else {
+          effectiveSelectedIds = [...selectedIds, targetId];
+          setSelectedIds(effectiveSelectedIds);
+        }
+      } else {
+        if (!selectedIds.includes(targetId)) {
+          effectiveSelectedIds = [targetId];
+          setSelectedIds([targetId]);
+        }
+      }
+
+      if (activeTool === 'select') {
+        const canvasPos = screenToCanvas(e.clientX, e.clientY);
+        const initialSnapshots: Record<string, any> = {};
+        const allMoveIds = collectMoveIds(effectiveSelectedIds, document.objects);
+
+        for (const moveId of allMoveIds) {
+          const obj = document.objects[moveId];
+          if (obj) {
+            initialSnapshots[moveId] = {
+              x: obj.x,
+              y: obj.y,
+              width: obj.width,
+              height: obj.height,
+              rotation: obj.rotation,
+            };
+          }
+        }
+
+        setDragState({
+          type: 'move',
+          startX: canvasPos.x,
+          startY: canvasPos.y,
+          currentX: canvasPos.x,
+          currentY: canvasPos.y,
+          initialSnapshots,
+        });
       }
     },
-    [activeTool, selectObject, setMobileActiveTab]
+    [activeTool, selectedIds, document.objects, screenToCanvas, setSelectedIds, setDragState]
   );
 
   const handleObjectDoubleClick = useCallback(
@@ -207,11 +264,13 @@ export const Canvas: React.FC = () => {
   const handleMovePointerDown = (e: React.PointerEvent) => {
     if (activeTool === 'hand' || isSpacePressed.current) return;
     e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
 
     const canvasPos = screenToCanvas(e.clientX, e.clientY);
     const initialSnapshots: Record<string, any> = {};
+    const allMoveIds = collectMoveIds(selectedIds, document.objects);
 
-    for (const id of selectedIds) {
+    for (const id of allMoveIds) {
       const obj = document.objects[id];
       if (obj) {
         initialSnapshots[id] = {
@@ -237,10 +296,12 @@ export const Canvas: React.FC = () => {
   // Resize handle pointer down
   const handleResizePointerDown = (handle: DragHandle, e: React.PointerEvent) => {
     e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     const canvasPos = screenToCanvas(e.clientX, e.clientY);
     const initialSnapshots: Record<string, any> = {};
+    const allResizeIds = collectMoveIds(selectedIds, document.objects);
 
-    for (const id of selectedIds) {
+    for (const id of allResizeIds) {
       const obj = document.objects[id];
       if (obj) {
         initialSnapshots[id] = {
@@ -267,6 +328,7 @@ export const Canvas: React.FC = () => {
   // Rotate handle pointer down
   const handleRotatePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     const canvasPos = screenToCanvas(e.clientX, e.clientY);
     const target = document.objects[selectedIds[0]];
     if (!target) return;
@@ -336,7 +398,9 @@ export const Canvas: React.FC = () => {
         e.shiftKey
       );
 
-      updateObjectProperties(target.id, { rotation: newRotation }, 'Rotate object');
+      updateObjectsTransient({
+        [target.id]: { rotation: newRotation },
+      });
       return;
     }
 
@@ -359,7 +423,7 @@ export const Canvas: React.FC = () => {
 
           // Collect other sibling objects
           const others = Object.values(document.objects)
-            .filter(o => o.id !== id && o.visible && o.parentId === document.objects[id]?.parentId)
+            .filter(o => !dragState.initialSnapshots?.[o.id] && o.visible && o.parentId === document.objects[id]?.parentId)
             .map(o => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
 
           const snapRes = computeSmartSnapping(rawBounds, others, 6);
@@ -376,20 +440,18 @@ export const Canvas: React.FC = () => {
 
       setActiveGuides(guideLines);
 
-      // Live update object positions
-      for (const id of selectedIds) {
+      // Live update object positions transiently without polluting history
+      const updates: Record<string, Partial<PixoraObject>> = {};
+      for (const id of Object.keys(dragState.initialSnapshots)) {
         const init = dragState.initialSnapshots[id];
         if (init) {
-          updateObjectProperties(
-            id,
-            {
-              x: Math.round(init.x + deltaX),
-              y: Math.round(init.y + deltaY),
-            },
-            'Move object'
-          );
+          updates[id] = {
+            x: Math.round(init.x + deltaX),
+            y: Math.round(init.y + deltaY),
+          };
         }
       }
+      updateObjectsTransient(updates);
       return;
     }
 
@@ -409,17 +471,32 @@ export const Canvas: React.FC = () => {
           e.shiftKey
         );
 
-        updateObjectProperties(
-          id,
-          {
+        const updates: Record<string, Partial<PixoraObject>> = {
+          [id]: {
             x: newBounds.x,
             y: newBounds.y,
             width: newBounds.width,
             height: newBounds.height,
           },
-          'Resize object'
-        );
+        };
+
+        // If the resized object has descendants in snapshots (e.g. group or frame), scale them
+        const scaleX = init.width > 0 ? newBounds.width / init.width : 1;
+        const scaleY = init.height > 0 ? newBounds.height / init.height : 1;
+
+        for (const [snapId, snap] of Object.entries(dragState.initialSnapshots)) {
+          if (snapId === id) continue;
+          updates[snapId] = {
+            x: Math.round(newBounds.x + (snap.x - init.x) * scaleX),
+            y: Math.round(newBounds.y + (snap.y - init.y) * scaleY),
+            width: Math.max(1, Math.round(snap.width * scaleX)),
+            height: Math.max(1, Math.round(snap.height * scaleY)),
+          };
+        }
+
+        updateObjectsTransient(updates);
       }
+      return;
     }
   };
 
@@ -573,10 +650,12 @@ export const Canvas: React.FC = () => {
     <div
       ref={containerRef}
       className={`relative w-full h-full overflow-hidden select-none touch-none bg-pixora-bg ${cursorClass}`}
+      style={{ touchAction: 'none' }}
       onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -591,7 +670,7 @@ export const Canvas: React.FC = () => {
       {/* SVG Canvas World */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ zIndex: 10 }}
+        style={{ zIndex: 10, touchAction: 'none' }}
       >
         <g
           transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.zoom})`}
@@ -610,6 +689,7 @@ export const Canvas: React.FC = () => {
                 isSelected={selectedIds.includes(obj.id)}
                 isHovered={hoveredId === obj.id}
                 onSelect={handleObjectSelect}
+                onObjectPointerDown={handleObjectPointerDown}
                 onDoubleClick={handleObjectDoubleClick}
                 zoom={viewport.zoom}
               />

@@ -10,9 +10,12 @@ import {
 import { useDocument } from '../../document/documentContext';
 import { useEditor } from '../../editor/editorContext';
 import { getBoundingBox } from '../../utils/math';
+import { collectMoveIds } from '../../utils/tree';
+import { ObjectTransformSnapshot } from '../../types/editor';
+import { PixoraObject } from '../../types/document';
 
 export const AlignSection: React.FC = () => {
-  const { document, updateObjectProperties } = useDocument();
+  const { document, transformObjects } = useDocument();
   const { selectedIds } = useEditor();
 
   if (selectedIds.length === 0) return null;
@@ -21,6 +24,35 @@ export const AlignSection: React.FC = () => {
     const selected = selectedIds.map(id => document.objects[id]).filter(Boolean);
     if (selected.length === 0) return;
 
+    const prevSnapshots: Record<string, ObjectTransformSnapshot> = {};
+    const nextSnapshots: Record<string, ObjectTransformSnapshot> = {};
+
+    const shiftObjectAndDescendants = (rootObj: PixoraObject, targetX: number, targetY: number) => {
+      const deltaX = targetX - rootObj.x;
+      const deltaY = targetY - rootObj.y;
+      const allIds = collectMoveIds([rootObj.id], document.objects);
+      for (const id of allIds) {
+        const o = document.objects[id];
+        if (!o) continue;
+        if (!prevSnapshots[id]) {
+          prevSnapshots[id] = {
+            x: o.x,
+            y: o.y,
+            width: o.width,
+            height: o.height,
+            rotation: o.rotation,
+          };
+        }
+        nextSnapshots[id] = {
+          x: Math.round(o.x + deltaX),
+          y: Math.round(o.y + deltaY),
+          width: o.width,
+          height: o.height,
+          rotation: o.rotation,
+        };
+      }
+    };
+
     if (selected.length === 1) {
       const obj = selected[0];
       const parent = obj.parentId ? document.objects[obj.parentId] : null;
@@ -28,26 +60,32 @@ export const AlignSection: React.FC = () => {
         ? { x: parent.x, y: parent.y, width: parent.width, height: parent.height }
         : { x: 0, y: 0, width: 800, height: 600 };
 
+      let targetX = obj.x;
+      let targetY = obj.y;
+
       switch (type) {
         case 'left':
-          updateObjectProperties(obj.id, { x: refBox.x }, 'Align left');
+          targetX = refBox.x;
           break;
         case 'center':
-          updateObjectProperties(obj.id, { x: refBox.x + (refBox.width - obj.width) / 2 }, 'Align center');
+          targetX = refBox.x + (refBox.width - obj.width) / 2;
           break;
         case 'right':
-          updateObjectProperties(obj.id, { x: refBox.x + refBox.width - obj.width }, 'Align right');
+          targetX = refBox.x + refBox.width - obj.width;
           break;
         case 'top':
-          updateObjectProperties(obj.id, { y: refBox.y }, 'Align top');
+          targetY = refBox.y;
           break;
         case 'middle':
-          updateObjectProperties(obj.id, { y: refBox.y + (refBox.height - obj.height) / 2 }, 'Align middle');
+          targetY = refBox.y + (refBox.height - obj.height) / 2;
           break;
         case 'bottom':
-          updateObjectProperties(obj.id, { y: refBox.y + refBox.height - obj.height }, 'Align bottom');
+          targetY = refBox.y + refBox.height - obj.height;
           break;
       }
+
+      shiftObjectAndDescendants(obj, targetX, targetY);
+      transformObjects(prevSnapshots, nextSnapshots, 'move');
       return;
     }
 
@@ -56,27 +94,34 @@ export const AlignSection: React.FC = () => {
     if (!bbox) return;
 
     for (const obj of selected) {
+      let targetX = obj.x;
+      let targetY = obj.y;
+
       switch (type) {
         case 'left':
-          updateObjectProperties(obj.id, { x: bbox.x }, 'Align left');
+          targetX = bbox.x;
           break;
         case 'center':
-          updateObjectProperties(obj.id, { x: bbox.x + (bbox.width - obj.width) / 2 }, 'Align center');
+          targetX = bbox.x + (bbox.width - obj.width) / 2;
           break;
         case 'right':
-          updateObjectProperties(obj.id, { x: bbox.x + bbox.width - obj.width }, 'Align right');
+          targetX = bbox.x + bbox.width - obj.width;
           break;
         case 'top':
-          updateObjectProperties(obj.id, { y: bbox.y }, 'Align top');
+          targetY = bbox.y;
           break;
         case 'middle':
-          updateObjectProperties(obj.id, { y: bbox.y + (bbox.height - obj.height) / 2 }, 'Align middle');
+          targetY = bbox.y + (bbox.height - obj.height) / 2;
           break;
         case 'bottom':
-          updateObjectProperties(obj.id, { y: bbox.y + bbox.height - obj.height }, 'Align bottom');
+          targetY = bbox.y + bbox.height - obj.height;
           break;
       }
+
+      shiftObjectAndDescendants(obj, targetX, targetY);
     }
+
+    transformObjects(prevSnapshots, nextSnapshots, 'move');
   };
 
   return (
