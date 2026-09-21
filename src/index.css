@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #0f1013;
+  --color-surface: #18191e;
+  --color-surface-elevated: #22242c;
+  --color-border: #2c2f38;
+  --color-text: #f3f4f6;
+  --color-text-muted: #9ca3af;
+  --color-accent: #6366f1;
+  --color-selection: #38bdf8;
+  --color-danger: #ef4444;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+}
+
+/* Custom thin scrollbar for layer tree and properties panel */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2c2f38;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4450;
+}
+
+/* Prevent text selection and unwanted iOS callouts during canvas interactions */
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  background-color: #0f1013;
+  color: #f3f4f6;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
