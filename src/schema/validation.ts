@@ -41,7 +41,7 @@ export function validatePixoraProject(json: unknown): ValidationResult {
     };
   }
 
-  if (raw.version > 1) {
+  if (raw.version > 2) {
     // Unsupported future version
     return {
       success: false,

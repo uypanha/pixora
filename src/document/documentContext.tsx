@@ -18,7 +18,9 @@ import {
   ReorderLayerCommand,
   GroupObjectsCommand,
   UngroupCommand,
+  UpdatePhotoCommand,
 } from '../history/commands';
+import { PhotoProjectState } from '../types/document';
 import { createDefaultProject } from './defaultProject';
 import { generateId } from '../utils/id';
 import { getBoundingBox } from '../utils/math';
@@ -64,6 +66,11 @@ interface DocumentContextType {
   addAsset: (asset: PixoraAsset) => void;
   updateSettings: (settings: Partial<DocumentSettings>) => void;
   updateMetadata: (meta: Partial<DocumentMetadata>) => void;
+  updatePhoto: (
+    newPhoto: PhotoProjectState | ((prev: PhotoProjectState) => PhotoProjectState),
+    saveHistory?: boolean,
+    description?: string
+  ) => void;
 }
 
 const DocumentContext = createContext<DocumentContextType | null>(null);
@@ -439,6 +446,36 @@ export function DocumentProvider({
     });
   }, []);
 
+  const updatePhoto = useCallback(
+    (
+      newPhoto: PhotoProjectState | ((prev: PhotoProjectState) => PhotoProjectState),
+      saveHistory = true,
+      description?: string
+    ) => {
+      const currentDoc = documentRef.current;
+      if (!currentDoc.photo) return;
+      const nextPhoto = typeof newPhoto === 'function' ? newPhoto(currentDoc.photo) : newPhoto;
+      if (saveHistory) {
+        const cmd = new UpdatePhotoCommand(currentDoc.photo, nextPhoto, description);
+        const updated = historyRef.current.execute(cmd, currentDoc);
+        documentRef.current = updated;
+        setDocumentState(updated);
+        setHistoryVersion(v => v + 1);
+      } else {
+        setDocumentState(doc => {
+          if (!doc.photo) return doc;
+          const next = {
+            ...doc,
+            photo: nextPhoto,
+          };
+          documentRef.current = next;
+          return next;
+        });
+      }
+    },
+    []
+  );
+
   const activePage = useMemo(() => {
     return document.pages.find(p => p.id === activePageId) || document.pages[0];
   }, [document.pages, activePageId]);
@@ -470,6 +507,7 @@ export function DocumentProvider({
       addAsset,
       updateSettings,
       updateMetadata,
+      updatePhoto,
     }),
     [
       document,
@@ -495,6 +533,7 @@ export function DocumentProvider({
       addAsset,
       updateSettings,
       updateMetadata,
+      updatePhoto,
     ]
   );
 

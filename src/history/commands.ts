@@ -1,4 +1,4 @@
-import { PixoraDocument, PixoraObject, GroupObject, PixoraAsset } from '../types/document';
+import { PixoraDocument, PixoraObject, GroupObject, PixoraAsset, PhotoProjectState } from '../types/document';
 import { ObjectTransformSnapshot } from '../types/editor';
 import { getBoundingBox } from '../utils/math';
 
@@ -556,6 +556,36 @@ export class UngroupCommand implements HistoryCommand {
     if (!this.savedGroup) return doc;
     const groupCmd = new GroupObjectsCommand(this.savedGroup, this.pageId, this.parentId);
     return groupCmd.execute(doc);
+  }
+}
+
+/**
+ * Update photo project state command
+ */
+export class UpdatePhotoCommand implements HistoryCommand {
+  description: string;
+  constructor(
+    private prevPhoto: PhotoProjectState,
+    private nextPhoto: PhotoProjectState,
+    description?: string
+  ) {
+    this.description = description || 'Update Photo';
+  }
+
+  execute(doc: PixoraDocument): PixoraDocument {
+    return {
+      ...doc,
+      photo: this.nextPhoto,
+      metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+    };
+  }
+
+  undo(doc: PixoraDocument): PixoraDocument {
+    return {
+      ...doc,
+      photo: this.prevPhoto,
+      metadata: { ...doc.metadata, updatedAt: new Date().toISOString() },
+    };
   }
 }
 

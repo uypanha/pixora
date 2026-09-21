@@ -16,6 +16,7 @@ import { MobileBottomNav } from './mobile/MobileBottomNav';
 import { MobileFloatingTools } from './mobile/MobileFloatingTools';
 import { MobileBottomSheet } from './mobile/MobileBottomSheet';
 import { useKeyboardShortcuts } from './editor/shortcuts';
+import { PhotoEditor } from './editors/photo/PhotoEditor';
 
 function EditorApp() {
   const { document, setDocument } = useDocument();
@@ -55,7 +56,10 @@ function EditorApp() {
 
     async function checkLocalRecovery() {
       const recovered = await loadActiveProject();
-      if (recovered && Object.keys(recovered.objects).length > 0) {
+      const hasContent =
+        recovered &&
+        (Object.keys(recovered.objects || {}).length > 0 || !!recovered.photo);
+      if (hasContent) {
         setDocument(recovered, true);
         // Show launcher with "Continue Editing" banner
         setIsLauncherOpen(true);
@@ -92,40 +96,50 @@ function EditorApp() {
         }}
       />
 
-      {/* Top Header */}
-      {isMobile ? (
-        <MobileTopBar onOpenLauncher={() => setIsLauncherOpen(true)} />
+      {document.projectType === 'photo' ? (
+        <PhotoEditor onOpenLauncher={() => setIsLauncherOpen(true)} />
       ) : (
-        <TopToolbar
-          onOpenLauncher={() => setIsLauncherOpen(true)}
-          autosaveStatus={autosaveStatus}
-        />
+        <>
+          {/* Top Header */}
+          {isMobile ? (
+            <MobileTopBar onOpenLauncher={() => setIsLauncherOpen(true)} />
+          ) : (
+            <TopToolbar
+              onOpenLauncher={() => setIsLauncherOpen(true)}
+              autosaveStatus={autosaveStatus}
+            />
+          )}
+
+          {/* Main Workspace */}
+          <div className="flex-1 flex flex-row overflow-hidden relative">
+            {/* Left Sidebar (Desktop / Tablet toggle) */}
+            {!isMobile && showLeftSidebar && <LayerTree />}
+
+            {/* Center Canvas */}
+            <main className="flex-1 relative overflow-hidden flex flex-col">
+              <Canvas />
+
+              {/* Mobile Floating Tools & Sheets */}
+              {isMobile && <MobileFloatingTools />}
+            </main>
+
+            {/* Right Properties Panel (Desktop / Tablet toggle) */}
+            {!isMobile && showRightSidebar && <PropertiesPanel />}
+
+            {/* Mobile Bottom Sheets & Navigation */}
+            {isMobile && (
+              <>
+                <MobileBottomSheet />
+                <MobileBottomNav />
+              </>
+            )}
+          </div>
+
+          <ExportModal />
+          <ShortcutsModal />
+          <ContextMenu />
+        </>
       )}
-
-      {/* Main Workspace */}
-      <div className="flex-1 flex flex-row overflow-hidden relative">
-        {/* Left Sidebar (Desktop / Tablet toggle) */}
-        {!isMobile && showLeftSidebar && <LayerTree />}
-
-        {/* Center Canvas */}
-        <main className="flex-1 relative overflow-hidden flex flex-col">
-          <Canvas />
-
-          {/* Mobile Floating Tools & Sheets */}
-          {isMobile && <MobileFloatingTools />}
-        </main>
-
-        {/* Right Properties Panel (Desktop / Tablet toggle) */}
-        {!isMobile && showRightSidebar && <PropertiesPanel />}
-
-        {/* Mobile Bottom Sheets & Navigation */}
-        {isMobile && (
-          <>
-            <MobileBottomSheet />
-            <MobileBottomNav />
-          </>
-        )}
-      </div>
 
       {/* Modals & Dialogs */}
       <Launcher
@@ -135,13 +149,11 @@ function EditorApp() {
           setDocument(doc, true);
           setIsLauncherOpen(false);
         }}
-        hasActiveProject={Object.keys(document.objects).length > 0}
+        hasActiveProject={
+          Object.keys(document.objects || {}).length > 0 || !!document.photo
+        }
         activeProjectName={document.metadata.name}
       />
-
-      <ExportModal />
-      <ShortcutsModal />
-      <ContextMenu />
     </div>
   );
 }
