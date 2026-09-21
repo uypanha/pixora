@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Pipette, X, Check, GripHorizontal } from 'lucide-react';
 import type { HSV } from '../../utils/color';
@@ -25,6 +25,41 @@ const PRESET_PALETTE = [
   '#6366f1', '#8b5cf6', '#d946ef', '#ec4899',
 ];
 
+// Helper to compute coordinates immediately outside the layer setting panel
+const computePopoverPosition = (el: HTMLElement) => {
+  const rect = el.getBoundingClientRect();
+  const popoverWidth = 260;
+  const popoverHeight = 440;
+
+  const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+  // By default, place popup outside the layer setting panel to the left
+  let left = rect.left - popoverWidth - 12;
+  let top = rect.top - 8;
+
+  // If there is not enough room to the left of the panel (e.g. narrow screen or mobile)
+  if (left < 12) {
+    if (rect.right + popoverWidth + 12 <= screenW) {
+      // Place to the right of trigger
+      left = rect.right + 12;
+    } else {
+      // Center or clamp to screen
+      left = Math.max(12, Math.min(screenW - popoverWidth - 12, (screenW - popoverWidth) / 2));
+    }
+  }
+
+  // Vertical clamping so popup is never cut off
+  if (top + popoverHeight > screenH - 12) {
+    top = Math.max(12, screenH - popoverHeight - 12);
+  }
+  if (top < 12) {
+    top = 12;
+  }
+
+  return { left, top };
+};
+
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   label,
   value,
@@ -34,7 +69,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   const { document: pixoraDoc } = useDocument();
   const [isOpen, setIsOpen] = useState(false);
   const [colorMode, setColorMode] = useState<'hex' | 'rgba'>('hex');
-  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 100, left: 100 });
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -89,64 +124,56 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     };
   }, [isOpen]);
 
-  // Calculate position outside the layer setting panel
-  const updatePopoverPosition = useCallback(() => {
-    if (!triggerRef.current || hasUserMovedRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const popoverWidth = 260;
-    const popoverHeight = 440;
-
-    const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
-    const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
-
-    // By default, place popup outside the layer setting panel to the left
-    let left = rect.left - popoverWidth - 12;
-    let top = rect.top - 8;
-
-    // If there is not enough room to the left of the panel (e.g. narrow screen or mobile)
-    if (left < 12) {
-      if (rect.right + popoverWidth + 12 <= screenW) {
-        // Place to the right of trigger
-        left = rect.right + 12;
-      } else {
-        // Center or clamp to screen
-        left = Math.max(12, Math.min(screenW - popoverWidth - 12, (screenW - popoverWidth) / 2));
-      }
+  const openPopover = useCallback(() => {
+    hasUserMovedRef.current = false;
+    if (triggerRef.current) {
+      const pos = computePopoverPosition(triggerRef.current);
+      setPopoverPos(pos);
     }
-
-    // Vertical clamping so popup is never cut off
-    if (top + popoverHeight > screenH - 12) {
-      top = Math.max(12, screenH - popoverHeight - 12);
-    }
-    if (top < 12) {
-      top = 12;
-    }
-
-    setPopoverPos({ left, top });
+    setIsOpen(true);
   }, []);
 
-  // Recalculate popup position on open, window resize, or container scroll
-  useEffect(() => {
+  const togglePopover = useCallback(() => {
+    if (isOpen) {
+      setIsOpen(false);
+    } else {
+      openPopover();
+    }
+  }, [isOpen, openPopover]);
+
+  // Synchronously position before paint and track container scroll
+  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+  useIsomorphicLayoutEffect(() => {
     if (!isOpen) return;
-    updatePopoverPosition();
+
+    if (triggerRef.current && !hasUserMovedRef.current) {
+      setPopoverPos(computePopoverPosition(triggerRef.current));
+    }
 
     const handleScroll = () => {
-      if (!hasUserMovedRef.current) {
-        updatePopoverPosition();
+      if (!hasUserMovedRef.current && triggerRef.current) {
+        setPopoverPos(computePopoverPosition(triggerRef.current));
       }
     };
 
-    window.addEventListener('resize', updatePopoverPosition);
+    const handleResize = () => {
+      if (!hasUserMovedRef.current && triggerRef.current) {
+        setPopoverPos(computePopoverPosition(triggerRef.current));
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleScroll, true);
     return () => {
-      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll, true);
     };
-  }, [isOpen, updatePopoverPosition]);
+  }, [isOpen]);
 
   // Drag popover by header across canvas
   const handleHeaderPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
+    if (!popoverPos || (e.target as HTMLElement).closest('button')) return;
     isDraggingRef.current = true;
     hasUserMovedRef.current = true;
     dragOffsetRef.current = {
@@ -316,10 +343,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         {/* Swatch Preview Button */}
         <button
           type="button"
-          onClick={() => {
-            if (!isOpen) hasUserMovedRef.current = false;
-            setIsOpen(!isOpen);
-          }}
+          onClick={togglePopover}
           title="Open Color Picker"
           className="relative w-5 h-5 rounded overflow-hidden border border-white/20 shadow-inner shrink-0 cursor-pointer transition-transform hover:scale-105"
         >
@@ -349,12 +373,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               }
             }
           }}
-          onFocus={() => {
-            if (!isOpen) {
-              hasUserMovedRef.current = false;
-              setIsOpen(true);
-            }
-          }}
+          onFocus={openPopover}
           className="bg-transparent text-pixora-text outline-none font-mono w-20 text-right uppercase text-xs"
         />
 
@@ -364,6 +383,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
       {/* Floating Modern Color Picker Popover outside layer setting panel */}
       {isOpen &&
+        popoverPos &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
