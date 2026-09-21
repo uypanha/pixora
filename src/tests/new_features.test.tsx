@@ -9,6 +9,9 @@ import { ContextMenu } from '../components/menu/ContextMenu';
 import { DocumentProvider } from '../document/documentContext';
 import { EditorProvider, useEditor } from '../editor/editorContext';
 import { createDefaultProject } from '../document/defaultProject';
+import { createText } from '../document/objectFactory';
+import { TextEditorOverlay } from '../canvas/TextEditorOverlay';
+import { CanvasObject } from '../canvas/CanvasObject';
 
 describe('Custom Fonts Support', () => {
   beforeEach(() => {
@@ -367,3 +370,70 @@ describe('Modern Color Picker & Color Math', () => {
     expect(popup?.style.zIndex).toBe('9999');
   });
 });
+
+describe('Text Layer Inline Editing and Layer Reordering', () => {
+  it('TextEditorOverlay commits text changes on blur and on unmount', () => {
+    const handleCommit = vi.fn();
+    const handleClose = vi.fn();
+    const textObj: TextObject = createText(50, 50, 'Original Text');
+
+    const { unmount } = render(
+      <TextEditorOverlay
+        object={textObj}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+        onCommit={handleCommit}
+        onClose={handleClose}
+      />
+    );
+
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('Original Text');
+
+    // Type new text
+    fireEvent.change(textarea, { target: { value: 'Updated Pixora Text' } });
+    expect(textarea.value).toBe('Updated Pixora Text');
+
+    // Unmount without explicit blur (e.g. clicking canvas)
+    unmount();
+    expect(handleCommit).toHaveBeenCalledWith('Updated Pixora Text');
+  });
+
+  it('CanvasObject hides SVG text element while editingTextId matches to prevent stacking', () => {
+    const textObj: TextObject = createText(10, 10, 'Stacked Text Test');
+
+    // When not editing, SVG text is rendered
+    const { container: container1 } = render(
+      <svg>
+        <CanvasObject
+          object={textObj}
+          objects={{ [textObj.id]: textObj }}
+          assets={{}}
+          isSelected={false}
+          isHovered={false}
+          onSelect={vi.fn()}
+          zoom={1}
+          editingTextId={null}
+        />
+      </svg>
+    );
+    expect(container1.querySelector('text')).not.toBeNull();
+
+    // When editing this text layer, CanvasObject returns null (no double-rendered text underneath)
+    const { container: container2 } = render(
+      <svg>
+        <CanvasObject
+          object={textObj}
+          objects={{ [textObj.id]: textObj }}
+          assets={{}}
+          isSelected={true}
+          isHovered={false}
+          onSelect={vi.fn()}
+          zoom={1}
+          editingTextId={textObj.id}
+        />
+      </svg>
+    );
+    expect(container2.querySelector('text')).toBeNull();
+  });
+});
+

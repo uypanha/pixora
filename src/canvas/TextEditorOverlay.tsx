@@ -17,24 +17,60 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
 }) => {
   const [content, setContent] = useState(object.text);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Keep live refs so cleanup always has latest callback and content
+  const contentRef = useRef(object.text);
+  const onCommitRef = useRef(onCommit);
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    onCommitRef.current = onCommit;
+  });
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.select();
     }
+    // Commit on unmount if not already committed (handles parent-driven close e.g. clicking canvas)
+    return () => {
+      if (!committedRef.current) {
+        committedRef.current = true;
+        onCommitRef.current(contentRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    contentRef.current = e.target.value;
+  };
+
   const handleBlur = () => {
-    onCommit(content);
-    onClose();
+    if (!committedRef.current) {
+      committedRef.current = true;
+      onCommitRef.current(contentRef.current);
+      onClose();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     e.stopPropagation(); // prevent canvas shortcuts
     if (e.key === 'Escape') {
-      onCommit(content);
+      // Cancel: close without committing changes
+      committedRef.current = true;
       onClose();
+      return;
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      // Cmd/Ctrl+Enter: commit & close
+      e.preventDefault();
+      if (!committedRef.current) {
+        committedRef.current = true;
+        onCommitRef.current(contentRef.current);
+        onClose();
+      }
+      return;
     }
   };
 
@@ -59,7 +95,7 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
       <textarea
         ref={textareaRef}
         value={content}
-        onChange={e => setContent(e.target.value)}
+        onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         className="w-full bg-transparent resize-none outline-none border-2 border-pixora-selection rounded px-1 py-0 shadow-lg text-white"
@@ -68,9 +104,12 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
           fontSize: `${fontSizePx}px`,
           fontWeight: object.fontWeight || 400,
           lineHeight,
+          letterSpacing: object.letterSpacing ? `${object.letterSpacing * viewport.zoom}px` : undefined,
           color: object.color || '#ffffff',
           textAlign: object.textAlign || 'left',
           minHeight: `${fontSizePx * lineHeight * 1.5}px`,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
         }}
         rows={Math.max(1, content.split('\n').length)}
       />

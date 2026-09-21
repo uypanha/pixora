@@ -172,6 +172,10 @@ export const Canvas: React.FC = () => {
         }
       }
 
+      if (editingTextId && editingTextId !== targetId) {
+        setEditingTextId(null);
+      }
+
       if (activeTool === 'select') {
         const canvasPos = screenToCanvas(e.clientX, e.clientY);
         const initialSnapshots: Record<string, any> = {};
@@ -200,7 +204,7 @@ export const Canvas: React.FC = () => {
         });
       }
     },
-    [activeTool, selectedIds, document.objects, screenToCanvas, setSelectedIds, setDragState]
+    [activeTool, selectedIds, document.objects, screenToCanvas, setSelectedIds, setDragState, editingTextId, setEditingTextId]
   );
 
   const handleObjectDoubleClick = useCallback(
@@ -732,12 +736,13 @@ export const Canvas: React.FC = () => {
                 onDoubleClick={handleObjectDoubleClick}
                 onContextMenu={handleObjectContextMenu}
                 zoom={viewport.zoom}
+                editingTextId={editingTextId}
               />
             );
           })}
 
           {/* Selection Box overlay */}
-          {selectionBounds && (
+          {selectionBounds && !editingTextId && (
             <SelectionBox
               bounds={selectionBounds}
               rotation={singleRotation}
@@ -769,16 +774,20 @@ export const Canvas: React.FC = () => {
       </svg>
 
       {/* In-place Text Editing Overlay */}
-      {editingTextId && document.objects[editingTextId]?.type === 'text' && (
-        <TextEditorOverlay
-          object={document.objects[editingTextId] as TextObject}
-          viewport={viewport}
-          onCommit={newText => {
-            updateObjectProperties(editingTextId, { text: newText }, 'Edit text');
-          }}
-          onClose={() => setEditingTextId(null)}
-        />
-      )}
+      {editingTextId && document.objects[editingTextId]?.type === 'text' && (() => {
+        const textObj = document.objects[editingTextId] as TextObject;
+        return (
+          <TextEditorOverlay
+            key={textObj.id}
+            object={textObj}
+            viewport={viewport}
+            onCommit={newText => {
+              updateObjectProperties(textObj.id, { text: newText }, 'Edit text');
+            }}
+            onClose={() => setEditingTextId(null)}
+          />
+        );
+      })()}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Layers,
   ArrowUp,
@@ -12,6 +12,12 @@ import { useEditor } from '../editor/editorContext';
 import { LayerItem } from './LayerItem';
 import { PagesPanel } from './PagesPanel';
 
+export interface DragLayerState {
+  draggingId: string | null;
+  dragOverId: string | null;
+  dragPosition: 'before' | 'after';
+}
+
 export const LayerTree: React.FC = () => {
   const {
     document,
@@ -24,6 +30,12 @@ export const LayerTree: React.FC = () => {
 
   const { selectedIds, setSelectedIds, clearSelection } = useEditor();
 
+  const [dragState, setDragState] = useState<DragLayerState>({
+    draggingId: null,
+    dragOverId: null,
+    dragPosition: 'after',
+  });
+
   const hasSelection = selectedIds.length > 0;
   const isSingleGroup =
     selectedIds.length === 1 && document.objects[selectedIds[0]]?.type === 'group';
@@ -34,17 +46,13 @@ export const LayerTree: React.FC = () => {
     const targetId = selectedIds[0];
     const targetObj = document.objects[targetId];
     const parentId = targetObj?.parentId || null;
-
-    let childList = parentId
+    const childList = parentId
       ? (document.objects[parentId] as any)?.childIds || []
       : activePage.childIds;
-
     const idx = childList.indexOf(targetId);
     if (idx < childList.length - 1) {
       const updated = [...childList];
-      const temp = updated[idx];
-      updated[idx] = updated[idx + 1];
-      updated[idx + 1] = temp;
+      [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
       reorderLayers(activePage.id, parentId, childList, updated);
     }
   };
@@ -55,26 +63,20 @@ export const LayerTree: React.FC = () => {
     const targetId = selectedIds[0];
     const targetObj = document.objects[targetId];
     const parentId = targetObj?.parentId || null;
-
-    let childList = parentId
+    const childList = parentId
       ? (document.objects[parentId] as any)?.childIds || []
       : activePage.childIds;
-
     const idx = childList.indexOf(targetId);
     if (idx > 0) {
       const updated = [...childList];
-      const temp = updated[idx];
-      updated[idx] = updated[idx - 1];
-      updated[idx - 1] = temp;
+      [updated[idx], updated[idx - 1]] = [updated[idx - 1], updated[idx]];
       reorderLayers(activePage.id, parentId, childList, updated);
     }
   };
 
   const handleGroup = () => {
     const newGroupId = groupObjects(selectedIds);
-    if (newGroupId) {
-      setSelectedIds([newGroupId]);
-    }
+    if (newGroupId) setSelectedIds([newGroupId]);
   };
 
   const handleUngroup = () => {
@@ -89,7 +91,66 @@ export const LayerTree: React.FC = () => {
     clearSelection();
   };
 
-  // Reversed childIds for top-to-bottom visual layer stack (Figma convention: top element is rendered in front)
+  // ── Drag handlers ──────────────────────────────────────────────────────────
+
+  const handleDragStart = (id: string) => {
+    setDragState(prev => ({ ...prev, draggingId: id }));
+  };
+
+  const handleDragOver = (id: string, position: 'before' | 'after') => {
+    setDragState(prev => ({ ...prev, dragOverId: id, dragPosition: position }));
+  };
+
+  const handleDragEnd = () => {
+    setDragState({ draggingId: null, dragOverId: null, dragPosition: 'after' });
+  };
+
+  const handleDrop = (targetId: string, position: 'before' | 'after') => {
+    const { draggingId } = dragState;
+    if (!draggingId || draggingId === targetId || !activePage) {
+      handleDragEnd();
+      return;
+    }
+
+    const sourceObj = document.objects[draggingId];
+    const targetObj = document.objects[targetId];
+
+    // Only allow reordering within the same parent
+    if (sourceObj?.parentId !== targetObj?.parentId) {
+      handleDragEnd();
+      return;
+    }
+
+    const parentId = sourceObj?.parentId || null;
+    const childList = parentId
+      ? [...((document.objects[parentId] as any)?.childIds || [])]
+      : [...activePage.childIds];
+
+    const sourceIdx = childList.indexOf(draggingId);
+    const targetIdx = childList.indexOf(targetId);
+    if (sourceIdx === -1 || targetIdx === -1) {
+      handleDragEnd();
+      return;
+    }
+
+    // Build updated order
+    const updated = [...childList];
+    updated.splice(sourceIdx, 1);
+
+    // After removing source, find target's new index
+    const newTargetIdx = updated.indexOf(targetId);
+
+    // UI is reversed (top of panel = top of stack = high childList index).
+    // 'before' in UI panel = place above target = higher z-order = higher array index
+    // 'after'  in UI panel = place below target = lower z-order  = same as newTargetIdx
+    const insertAt = position === 'before' ? newTargetIdx + 1 : newTargetIdx;
+    updated.splice(insertAt, 0, draggingId);
+
+    reorderLayers(activePage.id, parentId, childList, updated);
+    handleDragEnd();
+  };
+
+  // Reversed childIds: top of stack rendered first in panel (Figma convention)
   const reversedChildren = [...(activePage?.childIds || [])].reverse();
 
   return (
@@ -171,7 +232,17 @@ export const LayerTree: React.FC = () => {
           reversedChildren.map(childId => {
             const child = document.objects[childId];
             if (!child) return null;
-            return <LayerItem key={child.id} object={child} />;
+            return (
+              <LayerItem
+                key={child.id}
+                object={child}
+                dragState={dragState}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+              />
+            );
           })
         )}
       </div>

@@ -22,6 +22,7 @@ interface CanvasObjectProps {
   onDoubleClick?: (id: string, e: React.MouseEvent) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
   zoom: number;
+  editingTextId?: string | null;
 }
 
 export const CanvasObject: React.FC<CanvasObjectProps> = memo(
@@ -36,8 +37,11 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
     onDoubleClick,
     onContextMenu,
     zoom,
+    editingTextId,
   }) => {
     if (!object.visible) return null;
+    // Hide the SVG text while the textarea overlay is active to avoid stacking
+    if (object.type === 'text' && object.id === editingTextId) return null;
 
     const { x, y, width, height, rotation = 0, opacity = 1 } = object;
     const cx = x + width / 2;
@@ -158,6 +162,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                     onDoubleClick={onDoubleClick}
                     onContextMenu={onContextMenu}
                     zoom={zoom}
+                    editingTextId={editingTextId}
                   />
                 );
               })}
@@ -409,6 +414,7 @@ export const CanvasObject: React.FC<CanvasObjectProps> = memo(
                   onDoubleClick={onDoubleClick}
                   onContextMenu={onContextMenu}
                   zoom={zoom}
+                  editingTextId={editingTextId}
                 />
               );
             })}

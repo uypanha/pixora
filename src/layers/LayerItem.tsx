@@ -12,17 +12,32 @@ import {
   Image as ImageIcon,
   Layout,
   Folder,
+  GripVertical,
 } from 'lucide-react';
 import { PixoraObject } from '../types/document';
 import { useDocument } from '../document/documentContext';
 import { useEditor } from '../editor/editorContext';
+import { DragLayerState } from './LayerTree';
 
 interface LayerItemProps {
   object: PixoraObject;
   depth?: number;
+  dragState: DragLayerState;
+  onDragStart: (id: string) => void;
+  onDragOver: (id: string, position: 'before' | 'after') => void;
+  onDrop: (id: string, position: 'before' | 'after') => void;
+  onDragEnd: () => void;
 }
 
-export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
+export const LayerItem: React.FC<LayerItemProps> = ({
+  object,
+  depth = 0,
+  dragState,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}) => {
   const { document, updateObjectProperties } = useDocument();
   const { selectedIds, selectObject, hoveredId, setHoveredId, setContextMenu } = useEditor();
 
@@ -32,6 +47,8 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
 
   const isSelected = selectedIds.includes(object.id);
   const isHovered = hoveredId === object.id;
+  const isDragging = dragState.draggingId === object.id;
+  const isDragOver = dragState.dragOverId === object.id;
 
   const hasChildren =
     (object.type === 'frame' || object.type === 'group') &&
@@ -48,11 +65,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
     if (!selectedIds.includes(object.id)) {
       selectObject(object.id, false);
     }
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      targetId: object.id,
-    });
+    setContextMenu({ x: e.clientX, y: e.clientY, targetId: object.id });
   };
 
   const handleToggleVisibility = (e: React.MouseEvent) => {
@@ -80,37 +93,79 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
     setIsRenaming(false);
   };
 
+  // ── Drag handlers ──────────────────────────────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (isRenaming) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', object.id);
+    onDragStart(object.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'before' : 'after';
+    onDragOver(object.id, position);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'before' : 'after';
+    onDrop(object.id, position);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if leaving this element entirely (not moving to a child)
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      onDragOver('', 'after');
+    }
+  };
+
   const getIcon = () => {
     switch (object.type) {
-      case 'frame':
-        return <Layout size={13} className="text-purple-400" />;
-      case 'rectangle':
-        return <Square size={13} className="text-indigo-400" />;
-      case 'ellipse':
-        return <Circle size={13} className="text-sky-400" />;
-      case 'line':
-        return <Minus size={13} className="text-amber-400" />;
-      case 'text':
-        return <Type size={13} className="text-emerald-400" />;
-      case 'image':
-        return <ImageIcon size={13} className="text-pink-400" />;
-      case 'group':
-        return <Folder size={13} className="text-yellow-400" />;
-      default:
-        return <Square size={13} />;
+      case 'frame':    return <Layout size={13} className="text-purple-400" />;
+      case 'rectangle':return <Square size={13} className="text-indigo-400" />;
+      case 'ellipse':  return <Circle size={13} className="text-sky-400" />;
+      case 'line':     return <Minus size={13} className="text-amber-400" />;
+      case 'text':     return <Type size={13} className="text-emerald-400" />;
+      case 'image':    return <ImageIcon size={13} className="text-pink-400" />;
+      case 'group':    return <Folder size={13} className="text-yellow-400" />;
+      default:         return <Square size={13} />;
     }
   };
 
   return (
     <div>
+      {/* Drop indicator: BEFORE (above) */}
+      {isDragOver && dragState.dragPosition === 'before' && (
+        <div className="h-0.5 rounded-full bg-pixora-selection mx-1 mb-0.5" />
+      )}
+
       <div
+        draggable={!isRenaming}
         onClick={handleSelect}
         onContextMenu={handleContextMenu}
         onMouseEnter={() => setHoveredId(object.id)}
         onMouseLeave={() => setHoveredId(null)}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragEnd={onDragEnd}
+        onDragLeave={handleDragLeave}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
         className={`group flex items-center justify-between py-1.5 pr-2 text-xs rounded-md cursor-pointer transition-colors ${
-          isSelected
+          isDragging
+            ? 'opacity-40'
+            : isSelected
             ? 'bg-pixora-accent/20 text-white font-medium border border-pixora-selection/30'
             : isHovered
             ? 'bg-pixora-hover text-white'
@@ -118,6 +173,11 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
         }`}
       >
         <div className="flex items-center space-x-1.5 truncate flex-1 mr-1">
+          {/* Drag grip */}
+          <span className="opacity-0 group-hover:opacity-40 cursor-grab shrink-0">
+            <GripVertical size={11} />
+          </span>
+
           {/* Chevron for expandable nodes */}
           {hasChildren ? (
             <button
@@ -190,13 +250,29 @@ export const LayerItem: React.FC<LayerItemProps> = ({ object, depth = 0 }) => {
         </div>
       </div>
 
+      {/* Drop indicator: AFTER (below) */}
+      {isDragOver && dragState.dragPosition === 'after' && (
+        <div className="h-0.5 rounded-full bg-pixora-selection mx-1 mt-0.5" />
+      )}
+
       {/* Render children if frame or group */}
       {hasChildren && isOpen && (
         <div className="space-y-0.5">
-          {(object as any).childIds.map((childId: string) => {
+          {[...((object as any).childIds || [])].reverse().map((childId: string) => {
             const child = document.objects[childId];
             if (!child) return null;
-            return <LayerItem key={child.id} object={child} depth={depth + 1} />;
+            return (
+              <LayerItem
+                key={child.id}
+                object={child}
+                depth={depth + 1}
+                dragState={dragState}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onDragEnd={onDragEnd}
+              />
+            );
           })}
         </div>
       )}
