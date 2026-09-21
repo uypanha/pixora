@@ -1,8 +1,9 @@
-import { PixoraDocument } from '../types/document';
+import { PixoraDocument, ProjectType } from '../types/document';
 
 export interface RecentProjectItem {
   id: string;
   name: string;
+  projectType: ProjectType;
   updatedAt: string;
   createdAt: string;
   objectCount: number;
@@ -63,10 +64,11 @@ export async function saveActiveProject(doc: PixoraDocument): Promise<void> {
       const recentItem: RecentProjectItem = {
         id: doc.metadata.id,
         name: doc.metadata.name,
+        projectType: doc.projectType || 'canvas',
         updatedAt: doc.metadata.updatedAt,
         createdAt: doc.metadata.createdAt,
-        objectCount: Object.keys(doc.objects).length,
-        pageCount: doc.pages.length,
+        objectCount: Object.keys(doc.objects || {}).length,
+        pageCount: (doc.pages || []).length,
         thumbnail: doc.metadata.thumbnail,
         data: doc,
       };

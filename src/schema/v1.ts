@@ -130,14 +130,120 @@ export const DocumentMetadataSchema = z.object({
   thumbnail: z.string().optional(),
 });
 
+export const PhotoAdjustmentsSchema = z.object({
+  exposure: z.number().default(0),
+  brightness: z.number().default(0),
+  contrast: z.number().default(0),
+  highlights: z.number().default(0),
+  shadows: z.number().default(0),
+  whites: z.number().default(0),
+  blacks: z.number().default(0),
+  temperature: z.number().default(0),
+  tint: z.number().default(0),
+  saturation: z.number().default(0),
+  vibrance: z.number().default(0),
+  hue: z.number().default(0),
+  sharpness: z.number().default(0),
+  clarity: z.number().default(0),
+});
+
+export const PhotoFilterSchema = z.object({
+  type: z
+    .enum([
+      'none',
+      'vivid',
+      'warm',
+      'cool',
+      'vintage',
+      'bw',
+      'fade',
+      'cinematic',
+      'matte',
+      'soft',
+    ])
+    .default('none'),
+  intensity: z.number().min(0).max(100).default(100),
+});
+
+export const PhotoEffectsSchema = z.object({
+  vignette: z.number().min(0).max(100).default(0),
+  grain: z.number().min(0).max(100).default(0),
+  blur: z.number().min(0).max(100).default(0),
+  glow: z.number().min(0).max(100).default(0),
+  fade: z.number().min(0).max(100).default(0),
+});
+
+export const PhotoCropSchema = z
+  .object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    aspectRatio: z.string().optional(),
+  })
+  .nullable();
+
+export const PhotoTransformSchema = z.object({
+  rotation: z.number().default(0),
+  flipHorizontal: z.boolean().default(false),
+  flipVertical: z.boolean().default(false),
+});
+
+export const PhotoDrawStrokeSchema = z.object({
+  id: z.string(),
+  points: z.array(z.object({ x: z.number(), y: z.number() })),
+  color: z.string(),
+  size: z.number(),
+  opacity: z.number(),
+  isEraser: z.boolean().optional(),
+});
+
+export const PhotoTextOverlaySchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  x: z.number(),
+  y: z.number(),
+  fontFamily: z.string().default('Inter'),
+  fontSize: z.number().default(24),
+  fontWeight: z.union([z.number(), z.string()]).default(600),
+  color: z.string().default('#ffffff'),
+  opacity: z.number().default(1),
+  textAlign: z.enum(['left', 'center', 'right']).default('left'),
+  rotation: z.number().default(0),
+});
+
+export const PhotoRetouchSpotSchema = z.object({
+  id: z.string(),
+  x: z.number(),
+  y: z.number(),
+  radius: z.number(),
+  mode: z.enum(['heal', 'clone']).default('heal'),
+  sourceX: z.number().optional(),
+  sourceY: z.number().optional(),
+});
+
+export const PhotoProjectStateSchema = z.object({
+  sourceAssetId: z.string(),
+  adjustments: PhotoAdjustmentsSchema.default({}),
+  filter: PhotoFilterSchema.default({ type: 'none', intensity: 100 }),
+  effects: PhotoEffectsSchema.default({}),
+  crop: PhotoCropSchema.optional(),
+  transform: PhotoTransformSchema.default({ rotation: 0, flipHorizontal: false, flipVertical: false }),
+  drawing: z.array(PhotoDrawStrokeSchema).default([]),
+  texts: z.array(PhotoTextOverlaySchema).default([]),
+  retouch: z.array(PhotoRetouchSpotSchema).default([]),
+});
+
 export const PixoraDocumentV1Schema = z.object({
   format: z.literal('pixora'),
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]).default(1),
+  projectType: z.enum(['canvas', 'photo']).default('canvas'),
   metadata: DocumentMetadataSchema,
   settings: DocumentSettingsSchema,
-  pages: z.array(PageSchema).min(1),
-  objects: z.record(PixoraObjectSchema),
+  pages: z.array(PageSchema).default([]),
+  objects: z.record(PixoraObjectSchema).default({}),
   assets: z.record(PixoraAssetSchema).default({}),
+  photo: PhotoProjectStateSchema.optional(),
 });
 
 export type PixoraDocumentV1 = z.infer<typeof PixoraDocumentV1Schema>;

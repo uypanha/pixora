@@ -34,6 +34,9 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept shortcuts when editing photo project
+      if (document.projectType === 'photo') return;
+
       // Don't intercept shortcuts when user is typing in text input, textarea, or editing canvas text
       const target = e.target as HTMLElement;
       if (

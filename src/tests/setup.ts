@@ -88,3 +88,50 @@ if (typeof window !== 'undefined') {
   }
 }
 
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.getContext = function (contextId: string) {
+    if (contextId === '2d') {
+      return {
+        canvas: this,
+        clearRect: () => {},
+        fillRect: () => {},
+        strokeRect: () => {},
+        beginPath: () => {},
+        closePath: () => {},
+        moveTo: () => {},
+        lineTo: () => {},
+        arc: () => {},
+        stroke: () => {},
+        fill: () => {},
+        save: () => {},
+        restore: () => {},
+        translate: () => {},
+        rotate: () => {},
+        scale: () => {},
+        drawImage: () => {},
+        getImageData: (_x: number, _y: number, w: number, h: number) => ({
+          data: new Uint8ClampedArray(w * h * 4),
+          width: w,
+          height: h,
+        }),
+        putImageData: () => {},
+        createLinearGradient: () => ({
+          addColorStop: () => {},
+        }),
+        createRadialGradient: () => ({
+          addColorStop: () => {},
+        }),
+        fillText: () => {},
+        strokeText: () => {},
+        measureText: () => ({ width: 100 }),
+      } as any;
+    }
+    return null;
+  };
+
+  HTMLCanvasElement.prototype.toDataURL = function () {
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkWPjfDwAEfQHz4B2VlAAAAABJRU5ErkJggg==';
+  };
+}
+
+

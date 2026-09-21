@@ -5,16 +5,9 @@ export interface MigrationStep {
 }
 
 // Registry of sequential migration steps for future schema upgrades
-export const MIGRATIONS: MigrationStep[] = [
-  // Example future migration:
-  // {
-  //   fromVersion: 1,
-  //   toVersion: 2,
-  //   migrate: (data) => ({ ...data, version: 2 })
-  // }
-];
+export const MIGRATIONS: MigrationStep[] = [];
 
-export const CURRENT_PIXORA_VERSION = 1;
+export const CURRENT_PIXORA_VERSION = 2;
 
 export function migrateProject(data: Record<string, unknown>): Record<string, unknown> {
   let current = { ...data };
@@ -27,6 +20,11 @@ export function migrateProject(data: Record<string, unknown>): Record<string, un
     }
     current = step.migrate(current);
     version = step.toVersion;
+  }
+
+  // Ensure projectType always defaults to canvas if missing
+  if (!current.projectType) {
+    current.projectType = 'canvas';
   }
 
   return current;
