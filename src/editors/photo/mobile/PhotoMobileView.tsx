@@ -61,6 +61,8 @@ interface PhotoMobileViewProps {
   setDrawSize: (s: number) => void;
   drawOpacity: number;
   setDrawOpacity: (o: number) => void;
+  editingTextId?: string | null;
+  onSetEditingTextId?: (id: string | null) => void;
 }
 
 export const PhotoMobileView: React.FC<PhotoMobileViewProps> = (props) => {
@@ -152,6 +154,7 @@ export const PhotoMobileView: React.FC<PhotoMobileViewProps> = (props) => {
             onAddText={props.onAddText}
             onUpdateText={props.onUpdateText}
             onRemoveText={props.onRemoveText}
+            onStartEditText={props.onSetEditingTextId}
           />
         );
     }
@@ -172,6 +175,10 @@ export const PhotoMobileView: React.FC<PhotoMobileViewProps> = (props) => {
           selectedTextId={props.selectedTextId}
           onSelectText={props.onSelectText}
           onUpdateTextPosition={props.onUpdateTextPosition}
+          onUpdateText={props.onUpdateText}
+          onSelectTool={props.onSelectTool}
+          editingTextId={props.editingTextId}
+          onSetEditingTextId={props.onSetEditingTextId}
           brushRadius={props.brushRadius}
           drawTool={props.drawTool}
           drawColor={props.drawColor}

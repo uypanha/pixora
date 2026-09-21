@@ -18,6 +18,7 @@ export interface RenderPhotoOptions {
   transform: PhotoTransform;
   drawing?: PhotoDrawStroke[];
   texts?: PhotoTextOverlay[];
+  skipTexts?: boolean; // if true, suppresses text rendering on canvas (e.g. for interactive DOM text layer)
   isOriginal?: boolean; // if true, renders pure original image for Before/After compare
   maxDimension?: number; // for downsampled fast interactive preview
 }
@@ -97,6 +98,7 @@ export function renderPhotoToCanvas(
     transform,
     drawing = [],
     texts = [],
+    skipTexts = false,
     isOriginal = false,
     maxDimension,
   } = options;
@@ -416,8 +418,8 @@ export function renderPhotoToCanvas(
     ctx.restore();
   }
 
-  // Step 6: Render Text Overlays
-  if (texts.length > 0) {
+  // Step 6: Render Text Overlays (e.g. for export or standalone canvas)
+  if (!skipTexts && texts.length > 0) {
     ctx.save();
     for (const textItem of texts) {
       ctx.save();
@@ -427,17 +429,21 @@ export function renderPhotoToCanvas(
       if (textItem.rotation) {
         ctx.rotate((textItem.rotation * Math.PI) / 180);
       }
-      ctx.globalAlpha = textItem.opacity;
+      ctx.globalAlpha = textItem.opacity ?? 1;
       ctx.fillStyle = textItem.color;
-      ctx.font = `${textItem.fontWeight || 600} ${Math.max(12, textItem.fontSize * (outW / 800))}px ${textItem.fontFamily || 'Inter'}, sans-serif`;
-      ctx.textAlign = textItem.textAlign || 'left';
-      ctx.textBaseline = 'top';
+
+      const fontSizePx = textItem.fontSize;
+      ctx.font = `${textItem.fontWeight || 600} ${fontSizePx}px "${textItem.fontFamily || 'Inter'}", sans-serif`;
+      ctx.textAlign = textItem.textAlign || 'center';
+      ctx.textBaseline = 'middle';
 
       const lines = textItem.text.split('\n');
-      const fontSizePx = Math.max(12, textItem.fontSize * (outW / 800));
-      const lineH = fontSizePx * 1.35;
+      const lineH = fontSizePx * 1.3;
+      const totalH = lines.length * lineH;
+      const startY = -(totalH / 2) + lineH / 2;
+
       for (let idx = 0; idx < lines.length; idx++) {
-        ctx.fillText(lines[idx], 0, idx * lineH);
+        ctx.fillText(lines[idx], 0, startY + idx * lineH);
       }
       ctx.restore();
     }

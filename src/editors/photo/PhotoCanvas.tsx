@@ -4,11 +4,14 @@ import {
   PhotoCrop,
   PhotoDrawStroke,
   PhotoRetouchSpot,
+  PhotoTextOverlay,
   PixoraAsset,
 } from '../../types/document';
 import { renderPhotoToCanvas } from './rendering/photoRenderer';
 import { PhotoTool } from './PhotoToolbar';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { loadGoogleFont, registerFontAsset } from '../../utils/fontLoader';
+import { useDocument } from '../../document/documentContext';
 
 interface PhotoCanvasProps {
   photo: PhotoProjectState;
@@ -21,6 +24,10 @@ interface PhotoCanvasProps {
   selectedTextId: string | null;
   onSelectText: (id: string | null) => void;
   onUpdateTextPosition: (id: string, x: number, y: number) => void;
+  onUpdateText?: (id: string, updates: Partial<PhotoTextOverlay>) => void;
+  onSelectTool?: (tool: PhotoTool) => void;
+  editingTextId?: string | null;
+  onSetEditingTextId?: (id: string | null) => void;
   brushRadius?: number;
   drawTool?: 'brush' | 'eraser';
   drawColor?: string;
@@ -39,6 +46,10 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
   selectedTextId,
   onSelectText,
   onUpdateTextPosition,
+  onUpdateText,
+  onSelectTool,
+  editingTextId: controlledEditingId,
+  onSetEditingTextId,
   brushRadius = 25,
   drawTool = 'brush',
   drawColor = '#ef4444',
@@ -64,6 +75,34 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
   // Dragging text overlay
   const [draggingTextId, setDraggingTextId] = useState<string | null>(null);
   const [textDragOffset, setTextDragOffset] = useState({ x: 0, y: 0 });
+
+  // Inline text editing state
+  const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
+  const editingTextId = controlledEditingId !== undefined ? controlledEditingId : internalEditingId;
+  const setEditingTextId = (id: string | null) => {
+    setInternalEditingId(id);
+    onSetEditingTextId?.(id);
+  };
+
+  // Register custom font assets from document
+  const { document: pixoraDoc } = useDocument();
+  useEffect(() => {
+    if (!pixoraDoc?.assets) return;
+    for (const asset of Object.values(pixoraDoc.assets)) {
+      if (asset.type === 'font') {
+        registerFontAsset(asset);
+      }
+    }
+  }, [pixoraDoc?.assets]);
+
+  // Pre-load Google Fonts for all photo texts
+  useEffect(() => {
+    for (const t of photo.texts) {
+      if (t.fontFamily) {
+        loadGoogleFont(t.fontFamily);
+      }
+    }
+  }, [photo.texts]);
 
   // Interactive Crop Dragging State
   // handle: 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e' | null
@@ -152,6 +191,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
       transform: photo.transform,
       drawing: currentStroke ? [...photo.drawing, currentStroke] : photo.drawing,
       texts: photo.texts,
+      skipTexts: true,
       isOriginal: isComparing,
     });
   }, [
@@ -302,11 +342,11 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     }
 
     // Text dragging
-    if (activeTool === 'text' && draggingTextId && canvasRef.current) {
+    if (draggingTextId && canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect();
       const normX = Math.max(0, Math.min(1, (e.clientX - rect.left - textDragOffset.x) / rect.width));
       const normY = Math.max(0, Math.min(1, (e.clientY - rect.top - textDragOffset.y) / rect.height));
-      onUpdateTextPosition(draggingTextId, normX, normY);
+      onUpdateTextPosition(draggingTextId, Number(normX.toFixed(4)), Number(normY.toFixed(4)));
     }
   };
 
@@ -371,38 +411,96 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
         )}
 
         {/* Text Overlays Interactive Layer */}
-        {activeTool === 'text' && (
-          <div className="absolute inset-0 pointer-events-auto">
+        {!isComparing && photo.texts && photo.texts.length > 0 && (
+          <div className="absolute inset-0 pointer-events-none">
             {photo.texts.map((t) => {
               const isSelected = selectedTextId === t.id;
+              const isEditing = editingTextId === t.id;
+
+              if (isEditing) {
+                return (
+                  <textarea
+                    key={t.id}
+                    defaultValue={t.text}
+                    autoFocus
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      onUpdateText?.(t.id, { text: e.target.value });
+                    }}
+                    onBlur={() => setEditingTextId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setEditingTextId(null);
+                      } else if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        setEditingTextId(null);
+                      }
+                    }}
+                    style={{
+                      left: `${t.x * 100}%`,
+                      top: `${t.y * 100}%`,
+                      transform: `translate(-50%, -50%) ${t.rotation ? `rotate(${t.rotation}deg)` : ''}`,
+                      fontFamily: t.fontFamily || 'Inter',
+                      fontSize: `${t.fontSize}px`,
+                      fontWeight: t.fontWeight || 600,
+                      color: t.color,
+                      textAlign: t.textAlign,
+                      opacity: t.opacity ?? 1,
+                      lineHeight: 1.3,
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      backdropFilter: 'blur(4px)',
+                      minWidth: '140px',
+                      maxWidth: '90%',
+                    }}
+                    className="absolute pointer-events-auto z-30 p-2 rounded border-2 border-blue-500 shadow-2xl outline-none resize-none overflow-hidden"
+                    rows={Math.max(1, t.text.split('\n').length)}
+                  />
+                );
+              }
+
               return (
                 <div
                   key={t.id}
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     onSelectText(t.id);
+                    if (activeTool !== 'text') {
+                      onSelectTool?.('text');
+                    }
                     setDraggingTextId(t.id);
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                     setTextDragOffset({
-                      x: e.clientX - rect.left,
-                      y: e.clientY - rect.top,
+                      x: e.clientX - (rect.left + rect.width / 2),
+                      y: e.clientY - (rect.top + rect.height / 2),
                     });
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    onSelectText(t.id);
+                    if (activeTool !== 'text') {
+                      onSelectTool?.('text');
+                    }
+                    setEditingTextId(t.id);
                   }}
                   style={{
                     left: `${t.x * 100}%`,
                     top: `${t.y * 100}%`,
-                    transform: 'translate(-50%, -50%)',
-                    fontFamily: t.fontFamily,
+                    transform: `translate(-50%, -50%) ${t.rotation ? `rotate(${t.rotation}deg)` : ''}`,
+                    fontFamily: t.fontFamily || 'Inter',
                     fontSize: `${t.fontSize}px`,
                     fontWeight: t.fontWeight || 600,
                     color: t.color,
                     textAlign: t.textAlign,
+                    opacity: t.opacity ?? 1,
+                    lineHeight: 1.3,
+                    whiteSpace: 'pre-wrap',
                   }}
-                  className={`absolute cursor-move select-none px-2 py-1 rounded transition-shadow ${
+                  className={`absolute pointer-events-auto cursor-move select-none px-2.5 py-1.5 rounded transition-all ${
                     isSelected
-                      ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900 bg-slate-900/30'
+                      ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900 bg-slate-900/40 shadow-lg'
                       : 'hover:ring-1 hover:ring-blue-400/60'
                   }`}
+                  title="Click to select, double-click to edit text"
                 >
                   {t.text}
                 </div>
