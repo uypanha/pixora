@@ -6,6 +6,7 @@ interface TextEditorOverlayProps {
   object: TextObject;
   viewport: Viewport;
   onCommit: (text: string) => void;
+  onChangeLive?: (text: string) => void;
   onClose: () => void;
 }
 
@@ -13,6 +14,7 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
   object,
   viewport,
   onCommit,
+  onChangeLive,
   onClose,
 }) => {
   const [content, setContent] = useState(object.text);
@@ -20,10 +22,12 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
   // Keep live refs so cleanup always has latest callback and content
   const contentRef = useRef(object.text);
   const onCommitRef = useRef(onCommit);
+  const onChangeLiveRef = useRef(onChangeLive);
   const committedRef = useRef(false);
 
   useEffect(() => {
     onCommitRef.current = onCommit;
+    onChangeLiveRef.current = onChangeLive;
   });
 
   useEffect(() => {
@@ -35,21 +39,25 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
     return () => {
       if (!committedRef.current) {
         committedRef.current = true;
-        onCommitRef.current(contentRef.current);
+        const finalVal = textareaRef.current ? textareaRef.current.value : contentRef.current;
+        onCommitRef.current(finalVal);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-    contentRef.current = e.target.value;
+    const val = e.target.value;
+    setContent(val);
+    contentRef.current = val;
+    onChangeLiveRef.current?.(val);
   };
 
   const handleBlur = () => {
     if (!committedRef.current) {
       committedRef.current = true;
-      onCommitRef.current(contentRef.current);
+      const finalVal = textareaRef.current ? textareaRef.current.value : contentRef.current;
+      onCommitRef.current(finalVal);
       onClose();
     }
   };
@@ -67,11 +75,16 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
       e.preventDefault();
       if (!committedRef.current) {
         committedRef.current = true;
-        onCommitRef.current(contentRef.current);
+        const finalVal = textareaRef.current ? textareaRef.current.value : contentRef.current;
+        onCommitRef.current(finalVal);
         onClose();
       }
       return;
     }
+  };
+
+  const stopPropagation = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
   };
 
   // Convert canvas object coordinates to screen coordinates
@@ -84,6 +97,11 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
   return (
     <div
       className="absolute z-50 pointer-events-auto"
+      onPointerDown={stopPropagation}
+      onMouseDown={stopPropagation}
+      onMouseUp={stopPropagation}
+      onClick={stopPropagation}
+      onDoubleClick={stopPropagation}
       style={{
         left: `${screenX}px`,
         top: `${screenY}px`,
@@ -98,6 +116,11 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onPointerDown={stopPropagation}
+        onMouseDown={stopPropagation}
+        onMouseUp={stopPropagation}
+        onClick={stopPropagation}
+        onDoubleClick={stopPropagation}
         className="w-full bg-transparent resize-none outline-none border-2 border-pixora-selection rounded px-1 py-0 shadow-lg text-white"
         style={{
           fontFamily: object.fontFamily ? `'${object.fontFamily}', sans-serif` : 'Inter, sans-serif',

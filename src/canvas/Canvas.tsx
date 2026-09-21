@@ -210,12 +210,13 @@ export const Canvas: React.FC = () => {
   const handleObjectDoubleClick = useCallback(
     (id: string) => {
       setSelectedIds([id]);
+      setDragState(null);
       const obj = document.objects[id];
       if (obj && obj.type === 'text') {
         setEditingTextId(id);
       }
     },
-    [document.objects, setSelectedIds, setEditingTextId]
+    [document.objects, setSelectedIds, setEditingTextId, setDragState]
   );
 
   // Object right-click context menu
@@ -781,6 +782,19 @@ export const Canvas: React.FC = () => {
             key={textObj.id}
             object={textObj}
             viewport={viewport}
+            onChangeLive={newText => {
+              const updates: Partial<TextObject> = { text: newText };
+              if (
+                !textObj.name ||
+                textObj.name === 'Text' ||
+                textObj.name === 'New Text' ||
+                textObj.name === textObj.text ||
+                textObj.name === 'Double-click to edit'
+              ) {
+                updates.name = newText.slice(0, 50) || 'Text';
+              }
+              updateObjectsTransient({ [textObj.id]: updates });
+            }}
             onCommit={newText => {
               const updates: Partial<TextObject> = { text: newText };
               if (
