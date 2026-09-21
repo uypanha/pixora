@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { PixoraObject, ShadowEffect } from '../../types/document';
 import { useDocument } from '../../document/documentContext';
+import { ColorPicker } from '../../components/color/ColorPicker';
 
 interface EffectsSectionProps {
   object: PixoraObject;
@@ -93,6 +94,16 @@ export const EffectsSection: React.FC<EffectsSectionProps> = ({ object }) => {
                 className="bg-transparent text-pixora-text outline-none font-mono w-full text-right"
               />
             </div>
+          </div>
+
+          {/* Shadow Color */}
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-pixora-border/50">
+            <span className="text-pixora-text-dim">Color</span>
+            <ColorPicker
+              label="Shadow Color"
+              value={shadow.color || 'rgba(0, 0, 0, 0.3)'}
+              onChange={val => handleUpdateShadow('color', val)}
+            />
           </div>
         </div>
       )}

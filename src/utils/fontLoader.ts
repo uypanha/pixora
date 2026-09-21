@@ -49,51 +49,66 @@ const loadedFonts = new Set<string>(['Inter', 'system-ui', 'Arial', 'Georgia', '
  * Dynamically loads a Google font stylesheet on demand
  */
 export function loadGoogleFont(fontFamily: string): void {
-  if (!fontFamily || loadedFonts.has(fontFamily)) return;
+  const cleanName = fontFamily.replace(/['"]/g, '').trim();
+  if (!cleanName || loadedFonts.has(cleanName)) return;
   if (typeof document === 'undefined') return;
 
   try {
-    const formattedName = fontFamily.trim().replace(/\s+/g, '+');
+    const formattedName = cleanName.replace(/\s+/g, '+');
     const linkId = `google-font-${formattedName.toLowerCase()}`;
 
     if (document.getElementById(linkId)) {
-      loadedFonts.add(fontFamily);
+      loadedFonts.add(cleanName);
       return;
     }
 
     const link = document.createElement('link');
     link.id = linkId;
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${formattedName}:wght@300;400;500;600;700;800&display=swap`;
+    // Universal URL that works for ALL fonts (including single-weight display fonts like Pacifico, Bebas Neue)
+    link.href = `https://fonts.googleapis.com/css2?family=${formattedName}&display=swap`;
 
     document.head.appendChild(link);
-    loadedFonts.add(fontFamily);
+    loadedFonts.add(cleanName);
   } catch {
     // Non-critical if offline or network unavailable
   }
 }
 
 /**
- * Registers an uploaded font asset (dataUrl) via the CSS @font-face rule
+ * Registers an uploaded font asset (dataUrl) via CSS @font-face rule and browser FontFace API
  */
 export function registerFontAsset(asset: PixoraAsset): void {
   if (typeof document === 'undefined' || !asset.dataUrl) return;
 
   const fontStyleId = `custom-font-${asset.id}`;
-  if (document.getElementById(fontStyleId)) return;
+  if (!document.getElementById(fontStyleId)) {
+    const style = document.createElement('style');
+    style.id = fontStyleId;
+    style.textContent = `
+      @font-face {
+        font-family: "${asset.name}";
+        src: url("${asset.dataUrl}");
+        font-display: swap;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
-  const style = document.createElement('style');
-  style.id = fontStyleId;
-  style.textContent = `
-    @font-face {
-      font-family: "${asset.name}";
-      src: url("${asset.dataUrl}");
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: swap;
+  // Also register with modern FontFace API if supported for instant canvas re-render
+  if (typeof FontFace !== 'undefined') {
+    try {
+      const font = new FontFace(asset.name, `url("${asset.dataUrl}")`);
+      font.load().then(loadedFace => {
+        document.fonts.add(loadedFace);
+      }).catch(() => {
+        // Fallback to style tag already appended
+      });
+    } catch {
+      // Fallback to style tag already appended
     }
-  `;
-  document.head.appendChild(style);
+  }
+
   loadedFonts.add(asset.name);
 }
 

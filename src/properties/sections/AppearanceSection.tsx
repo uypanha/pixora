@@ -1,6 +1,7 @@
 import React from 'react';
 import { PixoraObject } from '../../types/document';
 import { useDocument } from '../../document/documentContext';
+import { ColorPicker } from '../../components/color/ColorPicker';
 
 interface AppearanceSectionProps {
   object: PixoraObject;
@@ -42,20 +43,11 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ object }) 
       {hasFill && (
         <div className="flex items-center justify-between text-xs">
           <span className="text-pixora-text-dim">Fill</span>
-          <div className="flex items-center space-x-2 bg-pixora-elevated px-2 py-1 rounded border border-pixora-border focus-within:border-pixora-selection">
-            <input
-              type="color"
-              value={(object as any).fill || '#ffffff'}
-              onChange={e => handleFillChange(e.target.value)}
-              className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0"
-            />
-            <input
-              type="text"
-              value={(object as any).fill || '#ffffff'}
-              onChange={e => handleFillChange(e.target.value)}
-              className="bg-transparent text-pixora-text outline-none font-mono w-20 text-right uppercase"
-            />
-          </div>
+          <ColorPicker
+            label="Fill Color"
+            value={(object as any).fill || '#ffffff'}
+            onChange={handleFillChange}
+          />
         </div>
       )}
 

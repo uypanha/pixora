@@ -25,6 +25,7 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
     setSelectedIds,
     clearSelection,
     editingTextId,
+    setEditingTextId,
     clipboard,
     setClipboard,
     contextMenu,
@@ -205,6 +206,15 @@ export function useKeyboardShortcuts(onOpenFilePicker: () => void) {
           }
         }
         return;
+      }
+
+      // Enter: Edit text if single text object is selected
+      if (e.key === 'Enter') {
+        if (selectedIds.length === 1 && document.objects[selectedIds[0]]?.type === 'text') {
+          e.preventDefault();
+          setEditingTextId(selectedIds[0]);
+          return;
+        }
       }
 
       // Delete / Backspace

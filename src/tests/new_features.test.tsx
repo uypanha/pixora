@@ -54,6 +54,7 @@ describe('Group Child Layer Selection and Transformation', () => {
     locked: false,
     visible: true,
     parentId: 'group-1',
+    fill: '#6366f1',
   };
 
   const child2: RectangleObject = {
@@ -69,6 +70,7 @@ describe('Group Child Layer Selection and Transformation', () => {
     locked: false,
     visible: true,
     parentId: 'group-1',
+    fill: '#6366f1',
   };
 
   const group: GroupObject = {
@@ -153,9 +155,10 @@ describe('Group Child Layer Selection and Transformation', () => {
 
   it('TransformObjectsCommand recalculates parent group bounds when child moves', () => {
     const doc: PixoraDocument = {
-      schemaVersion: 1,
+      format: 'pixora',
+      version: 1,
       metadata: { id: 'doc-1', name: 'Test', createdAt: '', updatedAt: '' },
-      settings: { grid: { enabled: true, size: 10, snap: false }, snapToObjects: true },
+      settings: { canvasColor: '#1e1e1e', grid: { enabled: true, size: 10, snap: false }, snapToObjects: true },
       pages: [{ id: 'p1', name: 'Page 1', childIds: ['group-1'] }],
       objects: {
         'rect-1': { ...child1 },
@@ -257,5 +260,103 @@ describe('Desktop Right-Click Context Menu', () => {
     expect(screen.getByText('Canvas Options')).toBeDefined();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByText('Canvas Options')).toBeNull();
+  });
+
+  it('shows Edit Text in context menu when right clicking a text object', () => {
+    const textObj: TextObject = {
+      id: 'text-1',
+      name: 'Heading',
+      type: 'text',
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 40,
+      rotation: 0,
+      opacity: 1,
+      locked: false,
+      visible: true,
+      text: 'Hello Pixora',
+      fontSize: 24,
+      fontFamily: 'Inter',
+      fontWeight: 400,
+      color: '#ffffff',
+      lineHeight: 1.4,
+      letterSpacing: 0,
+      textAlign: 'left',
+    };
+
+    render(
+      <DocumentProvider initialDocument={{
+        ...createDefaultProject(),
+        objects: { 'text-1': textObj },
+        pages: [{ id: 'p1', name: 'Page 1', childIds: ['text-1'] }]
+      }}>
+        <EditorProvider>
+          <TestEditorWithContextMenu initialTargetId="text-1" isSelection={true} />
+        </EditorProvider>
+      </DocumentProvider>
+    );
+
+    expect(screen.getByText('Edit Text')).toBeDefined();
+  });
+});
+
+import { hexToRgba, rgbaToHex, rgbaToHsv, hsvToRgba, parseColor, formatColor } from '../utils/color';
+import { ColorPicker } from '../components/color/ColorPicker';
+
+describe('Modern Color Picker & Color Math', () => {
+  it('hexToRgba correctly parses 3, 6, and 8 digit hex strings', () => {
+    expect(hexToRgba('#fff')).toEqual({ r: 255, g: 255, b: 255, a: 1 });
+    expect(hexToRgba('#ff0000')).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(hexToRgba('#00ff0080')).toEqual({ r: 0, g: 255, b: 0, a: 0.5 });
+  });
+
+  it('rgbaToHex formats opaque and translucent colors', () => {
+    expect(rgbaToHex(255, 255, 255, 1).toLowerCase()).toBe('#ffffff');
+    expect(rgbaToHex(255, 0, 0, 1).toLowerCase()).toBe('#ff0000');
+    expect(rgbaToHex(0, 0, 0, 0.5).toLowerCase()).toBe('#00000080');
+  });
+
+  it('hsvToRgba and rgbaToHsv convert back and forth reliably', () => {
+    const redHsv = rgbaToHsv(255, 0, 0, 1);
+    expect(redHsv.h).toBe(0);
+    expect(redHsv.s).toBe(100);
+    expect(redHsv.v).toBe(100);
+
+    const backToRgba = hsvToRgba(redHsv.h, redHsv.s, redHsv.v, redHsv.a);
+    expect(backToRgba.r).toBe(255);
+    expect(backToRgba.g).toBe(0);
+    expect(backToRgba.b).toBe(0);
+  });
+
+  it('parseColor handles rgba() string and transparent', () => {
+    expect(parseColor('rgba(100, 150, 200, 0.4)')).toEqual({ r: 100, g: 150, b: 200, a: 0.4 });
+    expect(parseColor('transparent')).toEqual({ r: 0, g: 0, b: 0, a: 0 });
+    expect(parseColor('white')).toEqual({ r: 255, g: 255, b: 255, a: 1 });
+  });
+
+  it('formatColor outputs hex when opaque and rgba when alpha < 1', () => {
+    expect(formatColor({ r: 255, g: 0, b: 0, a: 1 }).toLowerCase()).toBe('#ff0000');
+    expect(formatColor({ r: 255, g: 0, b: 0, a: 0.5 })).toBe('rgba(255, 0, 0, 0.5)');
+  });
+
+  it('ColorPicker renders swatch and opens popup on click', () => {
+    const handleChange = vi.fn();
+    render(
+      <DocumentProvider>
+        <ColorPicker label="Test Color" value="#3b82f6" onChange={handleChange} />
+      </DocumentProvider>
+    );
+
+    // Swatch trigger exists
+    const trigger = screen.getByTitle('Open Color Picker');
+    expect(trigger).toBeDefined();
+
+    // Click trigger to open picker popover
+    fireEvent.click(trigger);
+
+    // Color popover elements should appear
+    expect(screen.getByText('Presets')).toBeDefined();
+    expect(screen.getByText('HEX')).toBeDefined();
   });
 });

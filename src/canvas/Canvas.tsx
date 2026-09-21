@@ -746,6 +746,11 @@ export const Canvas: React.FC = () => {
                   y: e.clientY,
                 });
               }}
+              onDoubleClick={() => {
+                if (selectedIds.length === 1 && document.objects[selectedIds[0]]?.type === 'text') {
+                  setEditingTextId(selectedIds[0]);
+                }
+              }}
             />
           )}
 

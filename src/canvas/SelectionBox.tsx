@@ -10,6 +10,7 @@ interface SelectionBoxProps {
   onRotatePointerDown: (e: React.PointerEvent) => void;
   onMovePointerDown: (e: React.PointerEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 export const SelectionBox: React.FC<SelectionBoxProps> = ({
@@ -21,6 +22,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   onRotatePointerDown,
   onMovePointerDown,
   onContextMenu,
+  onDoubleClick,
 }) => {
   const { x, y, width, height } = bounds;
   const cx = x + width / 2;
@@ -62,6 +64,10 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
           e.preventDefault();
           e.stopPropagation();
           onContextMenu?.(e);
+        }}
+        onDoubleClick={e => {
+          e.stopPropagation();
+          onDoubleClick?.(e);
         }}
         onPointerDown={e => {
           if (e.button !== 0) return;

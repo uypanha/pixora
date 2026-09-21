@@ -17,6 +17,7 @@ import {
   ZoomOut,
   Maximize2,
   CheckSquare,
+  Type,
 } from 'lucide-react';
 import { useDocument } from '../../document/documentContext';
 import { useEditor } from '../../editor/editorContext';
@@ -46,6 +47,7 @@ export const ContextMenu: React.FC = () => {
     selectAll,
     clipboard,
     setClipboard,
+    setEditingTextId,
     zoomIn,
     zoomOut,
     resetZoom,
@@ -290,6 +292,23 @@ export const ContextMenu: React.FC = () => {
               ? `${selectedIds.length} objects selected`
               : targetObj?.name || 'Layer Options'}
           </div>
+
+          {/* Edit Text (if text object) */}
+          {targetObj?.type === 'text' && (
+            <button
+              onClick={() => {
+                setEditingTextId(targetObj.id);
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-pixora-selection hover:text-white transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <Type size={13} />
+                <span>Edit Text</span>
+              </div>
+              <span className="text-[11px] opacity-60">Enter</span>
+            </button>
+          )}
 
           {/* Copy */}
           <button

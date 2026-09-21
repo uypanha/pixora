@@ -64,7 +64,7 @@ export const TextEditorOverlay: React.FC<TextEditorOverlayProps> = ({
         onKeyDown={handleKeyDown}
         className="w-full bg-transparent resize-none outline-none border-2 border-pixora-selection rounded px-1 py-0 shadow-lg text-white"
         style={{
-          fontFamily: object.fontFamily || 'Inter, sans-serif',
+          fontFamily: object.fontFamily ? `'${object.fontFamily}', sans-serif` : 'Inter, sans-serif',
           fontSize: `${fontSizePx}px`,
           fontWeight: object.fontWeight || 400,
           lineHeight,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PixoraObject } from '../../types/document';
 import { useDocument } from '../../document/documentContext';
+import { ColorPicker } from '../../components/color/ColorPicker';
 
 interface StrokeSectionProps {
   object: PixoraObject;
@@ -33,20 +34,11 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({ object }) => {
       {/* Stroke Color */}
       <div className="flex items-center justify-between text-xs">
         <span className="text-pixora-text-dim">Color</span>
-        <div className="flex items-center space-x-2 bg-pixora-elevated px-2 py-1 rounded border border-pixora-border focus-within:border-pixora-selection">
-          <input
-            type="color"
-            value={strokeColor}
-            onChange={e => handleColorChange(e.target.value)}
-            className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0"
-          />
-          <input
-            type="text"
-            value={strokeColor}
-            onChange={e => handleColorChange(e.target.value)}
-            className="bg-transparent text-pixora-text outline-none font-mono w-20 text-right uppercase"
-          />
-        </div>
+        <ColorPicker
+          label="Stroke Color"
+          value={strokeColor}
+          onChange={handleColorChange}
+        />
       </div>
 
       {/* Stroke Width */}
