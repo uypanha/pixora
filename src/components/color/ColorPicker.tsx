@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Pipette, X, Check } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Pipette, X, Check, GripHorizontal } from 'lucide-react';
 import type { HSV } from '../../utils/color';
 import {
   parseColor,
@@ -33,12 +34,16 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   const { document: pixoraDoc } = useDocument();
   const [isOpen, setIsOpen] = useState(false);
   const [colorMode, setColorMode] = useState<'hex' | 'rgba'>('hex');
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 100, left: 100 });
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const satValRef = useRef<HTMLDivElement>(null);
   const hueTrackRef = useRef<HTMLDivElement>(null);
   const alphaTrackRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const hasUserMovedRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   // Parse incoming value to RGBA & HSV
   const currentRgba = useMemo(() => parseColor(value), [value]);
@@ -83,6 +88,88 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
+
+  // Calculate position outside the layer setting panel
+  const updatePopoverPosition = useCallback(() => {
+    if (!triggerRef.current || hasUserMovedRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const popoverWidth = 260;
+    const popoverHeight = 440;
+
+    const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+    // By default, place popup outside the layer setting panel to the left
+    let left = rect.left - popoverWidth - 12;
+    let top = rect.top - 8;
+
+    // If there is not enough room to the left of the panel (e.g. narrow screen or mobile)
+    if (left < 12) {
+      if (rect.right + popoverWidth + 12 <= screenW) {
+        // Place to the right of trigger
+        left = rect.right + 12;
+      } else {
+        // Center or clamp to screen
+        left = Math.max(12, Math.min(screenW - popoverWidth - 12, (screenW - popoverWidth) / 2));
+      }
+    }
+
+    // Vertical clamping so popup is never cut off
+    if (top + popoverHeight > screenH - 12) {
+      top = Math.max(12, screenH - popoverHeight - 12);
+    }
+    if (top < 12) {
+      top = 12;
+    }
+
+    setPopoverPos({ left, top });
+  }, []);
+
+  // Recalculate popup position on open, window resize, or container scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePopoverPosition();
+
+    const handleScroll = () => {
+      if (!hasUserMovedRef.current) {
+        updatePopoverPosition();
+      }
+    };
+
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [isOpen, updatePopoverPosition]);
+
+  // Drag popover by header across canvas
+  const handleHeaderPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    isDraggingRef.current = true;
+    hasUserMovedRef.current = true;
+    dragOffsetRef.current = {
+      x: e.clientX - popoverPos.left,
+      y: e.clientY - popoverPos.top,
+    };
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      const newLeft = clamp(ev.clientX - dragOffsetRef.current.x, 8, window.innerWidth - 268);
+      const newTop = clamp(ev.clientY - dragOffsetRef.current.y, 8, window.innerHeight - 80);
+      setPopoverPos({ left: newLeft, top: newTop });
+    };
+
+    const onPointerUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
   // Emit color update
   const emitColorChange = useCallback(
@@ -229,7 +316,10 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         {/* Swatch Preview Button */}
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            if (!isOpen) hasUserMovedRef.current = false;
+            setIsOpen(!isOpen);
+          }}
           title="Open Color Picker"
           className="relative w-5 h-5 rounded overflow-hidden border border-white/20 shadow-inner shrink-0 cursor-pointer transition-transform hover:scale-105"
         >
@@ -259,7 +349,12 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               }
             }
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            if (!isOpen) {
+              hasUserMovedRef.current = false;
+              setIsOpen(true);
+            }
+          }}
           className="bg-transparent text-pixora-text outline-none font-mono w-20 text-right uppercase text-xs"
         />
 
@@ -267,36 +362,53 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         <span className="text-[10px] text-pixora-text-dim font-mono">{opacityPercent}%</span>
       </div>
 
-      {/* Floating Modern Color Picker Popover */}
-      {isOpen && (
-        <div
-          ref={popoverRef}
-          style={{ width: '256px' }}
-          className="absolute right-0 top-full mt-2 z-50 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl p-3 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
-            <span className="font-semibold text-white tracking-wide text-[11px] uppercase">
-              {label || 'Color'}
-            </span>
-            <div className="flex items-center space-x-1">
-              {typeof window !== 'undefined' && 'EyeDropper' in window && (
+      {/* Floating Modern Color Picker Popover outside layer setting panel */}
+      {isOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: `${popoverPos.top}px`,
+              left: `${popoverPos.left}px`,
+              width: '260px',
+              zIndex: 9999,
+            }}
+            className="bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl p-3 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+          >
+            {/* Draggable Header */}
+            <div
+              onPointerDown={handleHeaderPointerDown}
+              className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 cursor-grab active:cursor-grabbing"
+              title="Drag to move color picker"
+            >
+              <div className="flex items-center space-x-1.5 pointer-events-none">
+                <GripHorizontal size={13} className="text-gray-500" />
+                <span className="font-semibold text-white tracking-wide text-[11px] uppercase">
+                  {label || 'Color'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-1">
+                {typeof window !== 'undefined' && 'EyeDropper' in window && (
+                  <button
+                    type="button"
+                    onClick={handleEyeDropper}
+                    title="Sample screen color"
+                    className="p-1 hover:text-white text-gray-400 hover:bg-white/10 rounded transition-colors cursor-pointer"
+                  >
+                    <Pipette size={13} />
+                  </button>
+                )}
                 <button
-                  onClick={handleEyeDropper}
-                  title="Sample screen color"
-                  className="p-1 hover:text-white text-gray-400 hover:bg-white/10 rounded transition-colors"
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 hover:text-white text-gray-400 hover:bg-white/10 rounded transition-colors cursor-pointer"
                 >
-                  <Pipette size={13} />
+                  <X size={13} />
                 </button>
-              )}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:text-white text-gray-400 hover:bg-white/10 rounded transition-colors"
-              >
-                <X size={13} />
-              </button>
+              </div>
             </div>
-          </div>
 
           {/* 2D Saturation / Value Gradient Canvas Area */}
           <div
@@ -536,7 +648,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

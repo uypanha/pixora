@@ -358,5 +358,12 @@ describe('Modern Color Picker & Color Math', () => {
     // Color popover elements should appear
     expect(screen.getByText('Presets')).toBeDefined();
     expect(screen.getByText('HEX')).toBeDefined();
+
+    // Verify popup rendered directly into document.body outside layer settings panel
+    const dragHeader = screen.getByTitle('Drag to move color picker');
+    const popup = dragHeader.parentElement;
+    expect(popup?.parentElement).toBe(document.body);
+    expect(popup?.style.position).toBe('fixed');
+    expect(popup?.style.zIndex).toBe('9999');
   });
 });
