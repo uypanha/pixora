@@ -8,6 +8,7 @@ import { UpdatePhotoCommand } from '../history/commands';
 import { saveActiveProject, loadActiveProject, getRecentProjects, clearAllProjects } from '../storage/db';
 import { DocumentProvider } from '../document/documentContext';
 import { PhotoEditor } from '../editors/photo/PhotoEditor';
+import { CropPanel } from '../editors/photo/panels/CropPanel';
 import { DEFAULT_PHOTO_ADJUSTMENTS, DEFAULT_PHOTO_EFFECTS } from '../types/document';
 
 describe('Photo Project Type & Architecture', () => {
@@ -335,6 +336,49 @@ describe('Photo Project Type & Architecture', () => {
           skipTexts: false,
         });
       }).not.toThrow();
+    });
+  });
+
+  describe('6. Crop Aspect Ratio Presets and Behavior', () => {
+    it('calculates proper crop dimensions when aspect ratio presets are selected', () => {
+      let changedCrop: any = null;
+
+      // Render CropPanel with 800x600 image (4:3 aspect ratio)
+      const { getByText } = render(
+        <CropPanel
+          crop={{ x: 0, y: 0, width: 1, height: 1 }}
+          imageWidth={800}
+          imageHeight={600}
+          onChange={(c: any) => {
+            changedCrop = c;
+          }}
+        />
+      );
+
+      // Select 1:1 preset
+      fireEvent.click(getByText('1 : 1'));
+      expect(changedCrop).not.toBeNull();
+      expect(changedCrop.aspectRatio).toBe('1:1');
+      // For 4:3 (imgAspect ~ 1.3333) and 1:1 (targetRatio = 1), targetRatio < imgAspect:
+      // height = 1, width = targetRatio / imgAspect = 0.75, x = (1 - 0.75)/2 = 0.125, y = 0
+      expect(changedCrop.height).toBe(1);
+      expect(changedCrop.width).toBe(0.75);
+      expect(changedCrop.x).toBe(0.125);
+      expect(changedCrop.y).toBe(0);
+
+      // Select 16:9 preset
+      fireEvent.click(getByText('16 : 9'));
+      expect(changedCrop.aspectRatio).toBe('16:9');
+      // For 4:3 (imgAspect = 4/3) and 16:9 (targetRatio = 16/9), targetRatio > imgAspect:
+      // width = 1, height = (1/targetRatio)*imgAspect = (9/16)*(4/3) = 36/48 = 0.75, x = 0, y = 0.125
+      expect(changedCrop.width).toBe(1);
+      expect(changedCrop.height).toBe(0.75);
+      expect(changedCrop.x).toBe(0);
+      expect(changedCrop.y).toBe(0.125);
+
+      // Select Free preset
+      fireEvent.click(getByText('Free'));
+      expect(changedCrop.aspectRatio).toBeUndefined();
     });
   });
 });

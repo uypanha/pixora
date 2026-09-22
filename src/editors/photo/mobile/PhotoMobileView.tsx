@@ -105,6 +105,8 @@ export const PhotoMobileView: React.FC<PhotoMobileViewProps> = (props) => {
         return (
           <CropPanel
             crop={props.photo.crop}
+            imageWidth={props.sourceAsset.width}
+            imageHeight={props.sourceAsset.height}
             onChange={props.onCropChange}
             onApply={props.onApplyCrop}
             onCancel={props.onCancelCrop}

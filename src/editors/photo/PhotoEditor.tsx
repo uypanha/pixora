@@ -521,6 +521,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
             {activeTool === 'crop' && (
               <CropPanel
                 crop={photo.crop}
+                imageWidth={sourceAsset.width}
+                imageHeight={sourceAsset.height}
                 onChange={handleCropChange}
                 onApply={handleApplyCrop}
                 onCancel={handleCancelCrop}
