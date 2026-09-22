@@ -86,6 +86,8 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     initialY: number;
     currentX: number;
     currentY: number;
+    halfNormW: number;
+    halfNormH: number;
   } | null>(null);
 
   // Scaling text overlay state (drag corner handles to resize font size)
@@ -299,6 +301,29 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     });
   };
 
+  // Helper to clamp a text overlay's position so its bounding box stays entirely within the photo frame [0, 1]
+  const clampTextToBounds = useCallback((id: string) => {
+    const targetText = photo.texts?.find((t) => t.id === id);
+    if (!targetText || !canvasRef.current || !containerRef.current) return;
+    const textElem = containerRef.current.querySelector(`[data-text-id="${id}"]`) as HTMLElement | null;
+    if (!textElem) return;
+    const textRect = textElem.getBoundingClientRect();
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    if (canvasRect.width <= 0 || canvasRect.height <= 0) return;
+    const halfNormW = (textRect.width / 2) / canvasRect.width;
+    const halfNormH = (textRect.height / 2) / canvasRect.height;
+    const minX = halfNormW >= 0.5 ? 0.5 : halfNormW;
+    const maxX = halfNormW >= 0.5 ? 0.5 : 1 - halfNormW;
+    const minY = halfNormH >= 0.5 ? 0.5 : halfNormH;
+    const maxY = halfNormH >= 0.5 ? 0.5 : 1 - halfNormH;
+    const newX = Number(Math.max(minX, Math.min(maxX, targetText.x)).toFixed(4));
+    const newY = Number(Math.max(minY, Math.min(maxY, targetText.y)).toFixed(4));
+    if (newX !== targetText.x || newY !== targetText.y) {
+      onUpdateTextPosition(id, newX, newY);
+      onUpdateText?.(id, { x: newX, y: newY });
+    }
+  }, [photo.texts, onUpdateTextPosition, onUpdateText]);
+
   // Pointer Down handler
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Capture pointer for reliable move/up tracking on touch
@@ -502,8 +527,16 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
       if (rect.width > 0 && rect.height > 0) {
         const deltaNormX = (e.clientX - textDragState.startX) / rect.width;
         const deltaNormY = (e.clientY - textDragState.startY) / rect.height;
-        const newX = Math.max(0, Math.min(1, Number((textDragState.initialX + deltaNormX).toFixed(4))));
-        const newY = Math.max(0, Math.min(1, Number((textDragState.initialY + deltaNormY).toFixed(4))));
+        const halfW = textDragState.halfNormW;
+        const halfH = textDragState.halfNormH;
+        const minX = halfW >= 0.5 ? 0.5 : halfW;
+        const maxX = halfW >= 0.5 ? 0.5 : 1 - halfW;
+        const minY = halfH >= 0.5 ? 0.5 : halfH;
+        const maxY = halfH >= 0.5 ? 0.5 : 1 - halfH;
+        const rawX = textDragState.initialX + deltaNormX;
+        const rawY = textDragState.initialY + deltaNormY;
+        const newX = Math.max(minX, Math.min(maxX, Number(rawX.toFixed(4))));
+        const newY = Math.max(minY, Math.min(maxY, Number(rawY.toFixed(4))));
         setTextDragState((prev) => (prev ? { ...prev, currentX: newX, currentY: newY } : null));
         onUpdateTextPosition(textDragState.id, newX, newY);
       }
@@ -538,15 +571,22 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     }
     if (textDragState) {
       onUpdateTextPosition(textDragState.id, textDragState.currentX, textDragState.currentY);
+      if (textDragState.currentX !== textDragState.initialX || textDragState.currentY !== textDragState.initialY) {
+        onUpdateText?.(textDragState.id, { x: textDragState.currentX, y: textDragState.currentY });
+      }
       setTextDragState(null);
     }
     if (textScaleState) {
       onUpdateText?.(textScaleState.id, { fontSize: textScaleState.currentFontSize });
+      const scaledId = textScaleState.id;
       setTextScaleState(null);
+      setTimeout(() => clampTextToBounds(scaledId), 0);
     }
     if (textRotateState) {
       onUpdateText?.(textRotateState.id, { rotation: textRotateState.currentRotation });
+      const rotatedId = textRotateState.id;
       setTextRotateState(null);
+      setTimeout(() => clampTextToBounds(rotatedId), 0);
     }
   };
 
@@ -611,13 +651,18 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     onChange={(e) => {
                       onUpdateText?.(t.id, { text: e.target.value });
                     }}
-                    onBlur={() => setEditingTextId(null)}
+                    onBlur={() => {
+                      setEditingTextId(null);
+                      setTimeout(() => clampTextToBounds(t.id), 0);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
                         setEditingTextId(null);
+                        setTimeout(() => clampTextToBounds(t.id), 0);
                       } else if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         setEditingTextId(null);
+                        setTimeout(() => clampTextToBounds(t.id), 0);
                       }
                     }}
                     style={{
@@ -662,6 +707,17 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     if (activeTool !== 'text') {
                       onSelectTool?.('text');
                     }
+                    const textElem = e.currentTarget as HTMLElement;
+                    const textRect = textElem.getBoundingClientRect();
+                    const canvasRect = canvasRef.current?.getBoundingClientRect();
+                    const halfNormW =
+                      canvasRect && canvasRect.width > 0
+                        ? textRect.width / 2 / canvasRect.width
+                        : 0;
+                    const halfNormH =
+                      canvasRect && canvasRect.height > 0
+                        ? textRect.height / 2 / canvasRect.height
+                        : 0;
                     setTextDragState({
                       id: t.id,
                       startX: e.clientX,
@@ -670,6 +726,8 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                       initialY: t.y,
                       currentX: t.x,
                       currentY: t.y,
+                      halfNormW,
+                      halfNormH,
                     });
                   }}
                   onDoubleClick={(e) => {
@@ -857,6 +915,9 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                         return 'top-1/2 right-0 translate-x-1/2 -translate-y-1/2 cursor-ew-resize';
                     }
                   };
+
+                  const isCorner = ['nw', 'ne', 'sw', 'se'].includes(pos);
+
                   return (
                     <div
                       key={pos}
@@ -871,8 +932,19 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                         });
                       }}
                       style={{ touchAction: 'none' }}
-                      className={`absolute w-4 h-4 bg-white border-2 border-slate-900 rounded-sm touch-none select-none z-30 ${getPosStyle()}`}
-                    />
+                      className={`absolute w-11 h-11 flex items-center justify-center pointer-events-auto touch-none select-none z-30 ${getPosStyle()}`}
+                    >
+                      {/* Visible handle pill / corner indicator */}
+                      <div
+                        className={`bg-white border-2 border-slate-950 shadow-lg pointer-events-none transition-transform hover:scale-110 active:scale-125 ${
+                          isCorner
+                            ? 'w-5 h-5 rounded-md'
+                            : pos === 'n' || pos === 's'
+                            ? 'w-7 h-2.5 rounded-full'
+                            : 'w-2.5 h-7 rounded-full'
+                        }`}
+                      />
+                    </div>
                   );
                 }
               )}
