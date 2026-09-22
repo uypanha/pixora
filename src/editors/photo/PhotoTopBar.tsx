@@ -50,7 +50,7 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
   };
 
   return (
-    <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between text-slate-200 select-none z-30">
+    <header className="h-14 bg-slate-900 border-b border-slate-800 px-2 sm:px-4 flex items-center justify-between text-slate-200 select-none z-30 overflow-hidden">
       {/* Left: Back & Project Info */}
       <div className="flex items-center gap-3">
         <button
@@ -62,9 +62,9 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
             <Camera className="w-3.5 h-3.5" />
-            <span>Photo</span>
+            <span className="hidden sm:inline">Photo</span>
           </div>
 
           {isEditingTitle ? (
@@ -97,7 +97,7 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
                 setLocalTitle(title);
                 setIsEditingTitle(true);
               }}
-              className="text-sm font-semibold text-slate-100 hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-800/60 max-w-[200px] truncate text-left"
+              className="text-sm font-semibold text-slate-100 hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-800/60 max-w-[100px] sm:max-w-[200px] truncate text-left"
               title="Click to rename"
             >
               {title}
@@ -107,7 +107,7 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
       </div>
 
       {/* Center: Undo / Redo & Compare */}
-      <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+      <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-800/80 p-0.5 sm:p-1 rounded-xl border border-slate-700/60 flex-shrink min-w-0">
         <button
           onClick={onUndo}
           disabled={!canUndo}
@@ -141,7 +141,7 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
           title="Hold to see original photo"
         >
           <Eye className="w-3.5 h-3.5" />
-          <span>{isComparing ? 'Showing Original' : 'Hold Compare'}</span>
+          <span className="hidden sm:inline">{isComparing ? 'Showing Original' : 'Compare'}</span>
         </button>
 
         <button
@@ -157,10 +157,10 @@ export const PhotoTopBar: React.FC<PhotoTopBarProps> = ({
       <div className="flex items-center gap-3">
         <button
           onClick={onExport}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/20 transition-all active:scale-95"
         >
           <Download className="w-4 h-4" />
-          <span>Export</span>
+          <span className="hidden sm:inline">Export</span>
         </button>
       </div>
     </header>

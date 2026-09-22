@@ -211,6 +211,19 @@ export interface PhotoTextOverlay {
   opacity: number;
   textAlign: 'left' | 'center' | 'right';
   rotation: number;
+  // Text effects
+  shadow?: {
+    enabled: boolean;
+    color: string;
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+  };
+  stroke?: {
+    enabled: boolean;
+    color: string;
+    width: number;
+  };
 }
 
 export interface PhotoRetouchSpot {

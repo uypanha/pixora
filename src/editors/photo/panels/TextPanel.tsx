@@ -244,15 +244,24 @@ export const TextPanel: React.FC<TextPanelProps> = ({
           {/* Size & Color */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <span className="text-[10px] text-pixora-text-dim">Size ({selectedText.fontSize}px)</span>
-              <input
-                type="range"
-                min={12}
-                max={120}
-                value={selectedText.fontSize}
-                onChange={e => onUpdateText(selectedText.id, { fontSize: Number(e.target.value) })}
-                className="w-full h-1.5 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
-              />
+              <span className="text-[10px] text-pixora-text-dim">Size</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="range"
+                  min={12}
+                  max={500}
+                  value={Math.min(500, selectedText.fontSize)}
+                  onChange={e => onUpdateText(selectedText.id, { fontSize: Number(e.target.value) })}
+                  className="flex-1 h-1.5 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={selectedText.fontSize}
+                  onChange={e => onUpdateText(selectedText.id, { fontSize: Math.max(1, Number(e.target.value)) })}
+                  className="w-14 bg-pixora-surface border border-pixora-border rounded px-1.5 py-0.5 text-white text-[10px] text-center outline-none focus:border-pixora-selection"
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] text-pixora-text-dim">Color</span>
@@ -290,6 +299,114 @@ export const TextPanel: React.FC<TextPanelProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Shadow Effect */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-pixora-text-dim">Shadow</span>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedText.shadow?.enabled ?? false}
+                  onChange={e => onUpdateText(selectedText.id, {
+                    shadow: {
+                      enabled: e.target.checked,
+                      color: selectedText.shadow?.color ?? '#000000',
+                      offsetX: selectedText.shadow?.offsetX ?? 2,
+                      offsetY: selectedText.shadow?.offsetY ?? 2,
+                      blur: selectedText.shadow?.blur ?? 4,
+                    }
+                  })}
+                  className="w-3 h-3 rounded accent-pixora-accent"
+                />
+                <span className="text-[10px] text-pixora-text-muted">{selectedText.shadow?.enabled ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            {selectedText.shadow?.enabled && (
+              <div className="space-y-1.5 bg-pixora-surface p-2 rounded border border-pixora-border">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">Color</span>
+                  <input
+                    type="color"
+                    value={selectedText.shadow.color}
+                    onChange={e => onUpdateText(selectedText.id, {
+                      shadow: { ...selectedText.shadow!, color: e.target.value }
+                    })}
+                    className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">X</span>
+                  <input type="range" min={-20} max={20} value={selectedText.shadow.offsetX}
+                    onChange={e => onUpdateText(selectedText.id, { shadow: { ...selectedText.shadow!, offsetX: Number(e.target.value) } })}
+                    className="flex-1 h-1 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
+                  />
+                  <span className="text-[10px] text-pixora-text-dim w-6 text-right">{selectedText.shadow.offsetX}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">Y</span>
+                  <input type="range" min={-20} max={20} value={selectedText.shadow.offsetY}
+                    onChange={e => onUpdateText(selectedText.id, { shadow: { ...selectedText.shadow!, offsetY: Number(e.target.value) } })}
+                    className="flex-1 h-1 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
+                  />
+                  <span className="text-[10px] text-pixora-text-dim w-6 text-right">{selectedText.shadow.offsetY}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">Blur</span>
+                  <input type="range" min={0} max={30} value={selectedText.shadow.blur}
+                    onChange={e => onUpdateText(selectedText.id, { shadow: { ...selectedText.shadow!, blur: Number(e.target.value) } })}
+                    className="flex-1 h-1 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
+                  />
+                  <span className="text-[10px] text-pixora-text-dim w-6 text-right">{selectedText.shadow.blur}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stroke Effect */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-pixora-text-dim">Stroke (Outline)</span>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedText.stroke?.enabled ?? false}
+                  onChange={e => onUpdateText(selectedText.id, {
+                    stroke: {
+                      enabled: e.target.checked,
+                      color: selectedText.stroke?.color ?? '#000000',
+                      width: selectedText.stroke?.width ?? 2,
+                    }
+                  })}
+                  className="w-3 h-3 rounded accent-pixora-accent"
+                />
+                <span className="text-[10px] text-pixora-text-muted">{selectedText.stroke?.enabled ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            {selectedText.stroke?.enabled && (
+              <div className="space-y-1.5 bg-pixora-surface p-2 rounded border border-pixora-border">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">Color</span>
+                  <input
+                    type="color"
+                    value={selectedText.stroke.color}
+                    onChange={e => onUpdateText(selectedText.id, {
+                      stroke: { ...selectedText.stroke!, color: e.target.value }
+                    })}
+                    className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-pixora-text-dim w-10">Width</span>
+                  <input type="range" min={1} max={20} value={selectedText.stroke.width}
+                    onChange={e => onUpdateText(selectedText.id, { stroke: { ...selectedText.stroke!, width: Number(e.target.value) } })}
+                    className="flex-1 h-1 bg-pixora-border rounded-lg appearance-none cursor-pointer accent-pixora-accent"
+                  />
+                  <span className="text-[10px] text-pixora-text-dim w-6 text-right">{selectedText.stroke.width}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (

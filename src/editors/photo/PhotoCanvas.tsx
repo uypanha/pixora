@@ -66,15 +66,26 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+  // Multi-touch pinch-to-zoom & two-finger pan
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStartRef = useRef<{ distance: number; zoom: number; panX: number; panY: number; midX: number; midY: number } | null>(null);
+
   // Space key hold for pan
   const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Active stroke drawing state
   const [currentStroke, setCurrentStroke] = useState<PhotoDrawStroke | null>(null);
 
-  // Dragging text overlay
-  const [draggingTextId, setDraggingTextId] = useState<string | null>(null);
-  const [textDragOffset, setTextDragOffset] = useState({ x: 0, y: 0 });
+  // Dragging text overlay state (tracks delta from initial touch for butter-smooth movement)
+  const [textDragState, setTextDragState] = useState<{
+    id: string;
+    startX: number;
+    startY: number;
+    initialX: number;
+    initialY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
 
   // Inline text editing state
   const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
@@ -196,7 +207,13 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     });
   }, [
     imageLoaded,
-    photo,
+    photo.adjustments,
+    photo.filter,
+    photo.effects,
+    photo.crop,
+    photo.transform,
+    photo.drawing,
+    photo.retouch,
     activeTool,
     isComparing,
     currentStroke,
@@ -226,7 +243,28 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
   };
 
   // Pointer Down handler
-  const handlePointerDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Capture pointer for reliable move/up tracking on touch
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+
+    // Track active pointers for pinch-to-zoom
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Two-finger pinch/pan mode
+    if (pointersRef.current.size === 2) {
+      const pts = Array.from(pointersRef.current.values());
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      pinchStartRef.current = { distance, zoom, panX: pan.x, panY: pan.y, midX, midY };
+      // Cancel any in-progress single-finger action
+      setCurrentStroke(null);
+      setTextDragState(null);
+      return;
+    }
+
     if (isSpacePressed || e.button === 1) {
       // Pan
       setIsPanning(true);
@@ -242,7 +280,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
         color: drawColor,
         size: drawSize,
         opacity: drawOpacity,
-        points: [{ x: coords.x, y: coords.y }],
+        points: [{ x: coords.normX, y: coords.normY }],
       };
       setCurrentStroke(newStroke);
       return;
@@ -262,7 +300,34 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
   };
 
   // Pointer Move handler
-  const handlePointerMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Update tracked pointer position
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Two-finger pinch-to-zoom & pan
+    if (pointersRef.current.size === 2 && pinchStartRef.current) {
+      const pts = Array.from(pointersRef.current.values());
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+
+      const scale = distance / pinchStartRef.current.distance;
+      const newZoom = Math.min(4, Math.max(0.1, Number((pinchStartRef.current.zoom * scale).toFixed(2))));
+      setZoom(newZoom);
+
+      const panDeltaX = midX - pinchStartRef.current.midX;
+      const panDeltaY = midY - pinchStartRef.current.midY;
+      setPan({
+        x: pinchStartRef.current.panX + panDeltaX,
+        y: pinchStartRef.current.panY + panDeltaY,
+      });
+      return;
+    }
+
     if (isPanning) {
       setPan({
         x: e.clientX - panStart.x,
@@ -277,7 +342,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
         if (!prev) return null;
         return {
           ...prev,
-          points: [...prev.points, { x: coords.x, y: coords.y }],
+          points: [...prev.points, { x: coords.normX, y: coords.normY }],
         };
       });
       return;
@@ -342,16 +407,30 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     }
 
     // Text dragging
-    if (draggingTextId && canvasRef.current) {
+    if (textDragState && canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect();
-      const normX = Math.max(0, Math.min(1, (e.clientX - rect.left - textDragOffset.x) / rect.width));
-      const normY = Math.max(0, Math.min(1, (e.clientY - rect.top - textDragOffset.y) / rect.height));
-      onUpdateTextPosition(draggingTextId, Number(normX.toFixed(4)), Number(normY.toFixed(4)));
+      if (rect.width > 0 && rect.height > 0) {
+        const deltaNormX = (e.clientX - textDragState.startX) / rect.width;
+        const deltaNormY = (e.clientY - textDragState.startY) / rect.height;
+        const newX = Math.max(0, Math.min(1, Number((textDragState.initialX + deltaNormX).toFixed(4))));
+        const newY = Math.max(0, Math.min(1, Number((textDragState.initialY + deltaNormY).toFixed(4))));
+        setTextDragState((prev) => (prev ? { ...prev, currentX: newX, currentY: newY } : null));
+        onUpdateTextPosition(textDragState.id, newX, newY);
+      }
+      return;
     }
   };
 
   // Pointer Up handler
-  const handlePointerUp = () => {
+  const handlePointerUp = (e?: React.PointerEvent<HTMLDivElement>) => {
+    // Clean up pointer tracking
+    if (e) {
+      pointersRef.current.delete(e.pointerId);
+    }
+    if (pointersRef.current.size < 2) {
+      pinchStartRef.current = null;
+    }
+
     if (isPanning) {
       setIsPanning(false);
     }
@@ -363,8 +442,9 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
       setCropDragHandle(null);
       setCropDragStart(null);
     }
-    if (draggingTextId) {
-      setDraggingTextId(null);
+    if (textDragState) {
+      onUpdateTextPosition(textDragState.id, textDragState.currentX, textDragState.currentY);
+      setTextDragState(null);
     }
   };
 
@@ -374,9 +454,11 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     <div
       ref={containerRef}
       onWheel={handleWheel}
-      onMouseDown={handlePointerDown}
-      onMouseMove={handlePointerMove}
-      onMouseUp={handlePointerUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{ touchAction: 'none' }}
       className={`relative flex-1 h-full w-full overflow-hidden bg-slate-950 select-none flex items-center justify-center ${
         isSpacePressed || isPanning
           ? 'cursor-grab active:cursor-grabbing'
@@ -423,7 +505,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     key={t.id}
                     defaultValue={t.text}
                     autoFocus
-                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       onUpdateText?.(t.id, { text: e.target.value });
                     }}
@@ -458,20 +540,28 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                 );
               }
 
+              const isDraggingThis = textDragState?.id === t.id;
+              const posX = isDraggingThis ? textDragState.currentX : t.x;
+              const posY = isDraggingThis ? textDragState.currentY : t.y;
+
               return (
                 <div
                   key={t.id}
-                  onMouseDown={(e) => {
+                  onPointerDown={(e) => {
                     e.stopPropagation();
+                    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
                     onSelectText(t.id);
                     if (activeTool !== 'text') {
                       onSelectTool?.('text');
                     }
-                    setDraggingTextId(t.id);
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setTextDragOffset({
-                      x: e.clientX - (rect.left + rect.width / 2),
-                      y: e.clientY - (rect.top + rect.height / 2),
+                    setTextDragState({
+                      id: t.id,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      initialX: t.x,
+                      initialY: t.y,
+                      currentX: t.x,
+                      currentY: t.y,
                     });
                   }}
                   onDoubleClick={(e) => {
@@ -483,8 +573,10 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     setEditingTextId(t.id);
                   }}
                   style={{
-                    left: `${t.x * 100}%`,
-                    top: `${t.y * 100}%`,
+                    left: `${posX * 100}%`,
+                    top: `${posY * 100}%`,
+                    touchAction: 'none',
+                    willChange: isDraggingThis ? 'left, top' : 'auto',
                     transform: `translate(-50%, -50%) ${t.rotation ? `rotate(${t.rotation}deg)` : ''}`,
                     fontFamily: t.fontFamily || 'Inter',
                     fontSize: `${t.fontSize}px`,
@@ -494,8 +586,15 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     opacity: t.opacity ?? 1,
                     lineHeight: 1.3,
                     whiteSpace: 'pre-wrap',
+                    ...(t.shadow?.enabled ? {
+                      textShadow: `${t.shadow.offsetX}px ${t.shadow.offsetY}px ${t.shadow.blur}px ${t.shadow.color}`,
+                    } : {}),
+                    ...(t.stroke?.enabled && t.stroke.width > 0 ? {
+                      WebkitTextStroke: `${t.stroke.width}px ${t.stroke.color}`,
+                      paintOrder: 'stroke fill' as any,
+                    } : {}),
                   }}
-                  className={`absolute pointer-events-auto cursor-move select-none px-2.5 py-1.5 rounded transition-all ${
+                  className={`absolute pointer-events-auto cursor-move select-none px-2.5 py-1.5 rounded transition-colors ${
                     isSelected
                       ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900 bg-slate-900/40 shadow-lg'
                       : 'hover:ring-1 hover:ring-blue-400/60'
@@ -552,7 +651,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
 
             {/* The Crop Rectangle */}
             <div
-              onMouseDown={(e) => {
+              onPointerDown={(e) => {
                 e.stopPropagation();
                 setCropDragHandle('move');
                 setCropDragStart({
@@ -608,7 +707,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                   return (
                     <div
                       key={pos}
-                      onMouseDown={(e) => {
+                      onPointerDown={(e) => {
                         e.stopPropagation();
                         setCropDragHandle(pos);
                         setCropDragStart({

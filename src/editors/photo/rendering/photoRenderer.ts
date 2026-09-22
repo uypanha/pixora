@@ -437,10 +437,39 @@ export function renderPhotoToCanvas(
       ctx.textAlign = textItem.textAlign || 'center';
       ctx.textBaseline = 'middle';
 
+      // Apply shadow effect
+      if (textItem.shadow?.enabled) {
+        ctx.shadowColor = textItem.shadow.color;
+        ctx.shadowBlur = textItem.shadow.blur;
+        ctx.shadowOffsetX = textItem.shadow.offsetX;
+        ctx.shadowOffsetY = textItem.shadow.offsetY;
+      }
+
       const lines = textItem.text.split('\n');
       const lineH = fontSizePx * 1.3;
       const totalH = lines.length * lineH;
       const startY = -(totalH / 2) + lineH / 2;
+
+      // Draw stroke (outline) first, behind the fill
+      if (textItem.stroke?.enabled && textItem.stroke.width > 0) {
+        ctx.save();
+        ctx.strokeStyle = textItem.stroke.color;
+        ctx.lineWidth = textItem.stroke.width * 2;
+        ctx.lineJoin = 'round';
+        // Temporarily disable shadow for stroke pass to avoid double shadow
+        ctx.shadowColor = 'transparent';
+        for (let idx = 0; idx < lines.length; idx++) {
+          ctx.strokeText(lines[idx], 0, startY + idx * lineH);
+        }
+        ctx.restore();
+        // Re-apply shadow for fill pass
+        if (textItem.shadow?.enabled) {
+          ctx.shadowColor = textItem.shadow.color;
+          ctx.shadowBlur = textItem.shadow.blur;
+          ctx.shadowOffsetX = textItem.shadow.offsetX;
+          ctx.shadowOffsetY = textItem.shadow.offsetY;
+        }
+      }
 
       for (let idx = 0; idx < lines.length; idx++) {
         ctx.fillText(lines[idx], 0, startY + idx * lineH);
