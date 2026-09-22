@@ -381,4 +381,51 @@ describe('Photo Project Type & Architecture', () => {
       expect(changedCrop.aspectRatio).toBeUndefined();
     });
   });
+
+  describe('7. Text Layer Frame Boundary Clamping', () => {
+    it('clamps text overlay coordinates so text bounding box stays within photo frame', () => {
+      // Mock text element half-width and half-height in normalized coords
+      const halfNormW = 0.15; // text spans 30% of canvas width
+      const halfNormH = 0.05; // text spans 10% of canvas height
+
+      const minX = halfNormW >= 0.5 ? 0.5 : halfNormW;
+      const maxX = halfNormW >= 0.5 ? 0.5 : 1 - halfNormW;
+      const minY = halfNormH >= 0.5 ? 0.5 : halfNormH;
+      const maxY = halfNormH >= 0.5 ? 0.5 : 1 - halfNormH;
+
+      expect(minX).toBe(0.15);
+      expect(maxX).toBe(0.85);
+      expect(minY).toBe(0.05);
+      expect(maxY).toBe(0.95);
+
+      // Attempting to drag text beyond left or top edge
+      const rawX1 = -0.2;
+      const rawY1 = -0.1;
+      const clampedX1 = Math.max(minX, Math.min(maxX, rawX1));
+      const clampedY1 = Math.max(minY, Math.min(maxY, rawY1));
+      expect(clampedX1).toBe(0.15);
+      expect(clampedY1).toBe(0.05);
+      // Left edge of text is clampedX1 - halfNormW = 0.0 (inside canvas)
+      expect(clampedX1 - halfNormW).toBe(0);
+      expect(clampedY1 - halfNormH).toBe(0);
+
+      // Attempting to drag text beyond right or bottom edge
+      const rawX2 = 1.4;
+      const rawY2 = 1.2;
+      const clampedX2 = Math.max(minX, Math.min(maxX, rawX2));
+      const clampedY2 = Math.max(minY, Math.min(maxY, rawY2));
+      expect(clampedX2).toBe(0.85);
+      expect(clampedY2).toBe(0.95);
+      // Right edge of text is clampedX2 + halfNormW = 1.0 (inside canvas)
+      expect(clampedX2 + halfNormW).toBe(1.0);
+      expect(clampedY2 + halfNormH).toBe(1.0);
+
+      // In case text is wider than canvas itself (halfNormW >= 0.5)
+      const oversizedHalfW = 0.6;
+      const oversizedMinX = oversizedHalfW >= 0.5 ? 0.5 : oversizedHalfW;
+      const oversizedMaxX = oversizedHalfW >= 0.5 ? 0.5 : 1 - oversizedHalfW;
+      expect(oversizedMinX).toBe(0.5);
+      expect(oversizedMaxX).toBe(0.5);
+    });
+  });
 });
