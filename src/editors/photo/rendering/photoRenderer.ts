@@ -437,6 +437,10 @@ export function renderPhotoToCanvas(
       ctx.textAlign = textItem.textAlign || 'center';
       ctx.textBaseline = 'middle';
 
+      if ('letterSpacing' in ctx && textItem.letterSpacing !== undefined) {
+        (ctx as any).letterSpacing = `${textItem.letterSpacing}px`;
+      }
+
       // Apply shadow effect
       if (textItem.shadow?.enabled) {
         ctx.shadowColor = textItem.shadow.color;
@@ -446,7 +450,7 @@ export function renderPhotoToCanvas(
       }
 
       const lines = textItem.text.split('\n');
-      const lineH = fontSizePx * 1.3;
+      const lineH = fontSizePx * (textItem.lineHeight || 1.3);
       const totalH = lines.length * lineH;
       const startY = -(totalH / 2) + lineH / 2;
 
