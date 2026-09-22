@@ -9,9 +9,10 @@ import {
 } from '../../types/document';
 import { renderPhotoToCanvas } from './rendering/photoRenderer';
 import { PhotoTool } from './PhotoToolbar';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, RotateCw } from 'lucide-react';
 import { loadGoogleFont, registerFontAsset } from '../../utils/fontLoader';
 import { useDocument } from '../../document/documentContext';
+import { calculateRotation } from '../../utils/math';
 
 interface PhotoCanvasProps {
   photo: PhotoProjectState;
@@ -87,6 +88,24 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     currentY: number;
   } | null>(null);
 
+  // Scaling text overlay state (drag corner handles to resize font size)
+  const [textScaleState, setTextScaleState] = useState<{
+    id: string;
+    centerX: number;
+    centerY: number;
+    initialDistance: number;
+    initialFontSize: number;
+    currentFontSize: number;
+  } | null>(null);
+
+  // Rotating text overlay state (drag top handle to rotate text)
+  const [textRotateState, setTextRotateState] = useState<{
+    id: string;
+    centerX: number;
+    centerY: number;
+    currentRotation: number;
+  } | null>(null);
+
   // Inline text editing state
   const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
   const editingTextId = controlledEditingId !== undefined ? controlledEditingId : internalEditingId;
@@ -123,6 +142,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     startY: number;
     initialCrop: PhotoCrop;
   } | null>(null);
+  const [liveCrop, setLiveCrop] = useState<PhotoCrop | null>(null);
 
   // Load source image
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -210,7 +230,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     photo.adjustments,
     photo.filter,
     photo.effects,
-    photo.crop,
+    activeTool === 'crop' ? null : photo.crop,
     photo.transform,
     photo.drawing,
     photo.retouch,
@@ -242,6 +262,43 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
     return { x, y, normX, normY };
   };
 
+  // Text scale handle pointer down (corner handles)
+  const handleScalePointerDown = (textItem: PhotoTextOverlay, e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    const parentEl = (e.currentTarget as HTMLElement).closest('[data-text-id]');
+    if (!parentEl) return;
+    const rect = parentEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    setTextScaleState({
+      id: textItem.id,
+      centerX: cx,
+      centerY: cy,
+      initialDistance: Math.max(10, dist),
+      initialFontSize: textItem.fontSize || 32,
+      currentFontSize: textItem.fontSize || 32,
+    });
+  };
+
+  // Text rotate handle pointer down (top handle)
+  const handleRotatePointerDown = (textItem: PhotoTextOverlay, e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    const parentEl = (e.currentTarget as HTMLElement).closest('[data-text-id]');
+    if (!parentEl) return;
+    const rect = parentEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    setTextRotateState({
+      id: textItem.id,
+      centerX: cx,
+      centerY: cy,
+      currentRotation: textItem.rotation || 0,
+    });
+  };
+
   // Pointer Down handler
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Capture pointer for reliable move/up tracking on touch
@@ -262,6 +319,8 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
       // Cancel any in-progress single-finger action
       setCurrentStroke(null);
       setTextDragState(null);
+      setTextScaleState(null);
+      setTextRotateState(null);
       return;
     }
 
@@ -350,59 +409,90 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
 
     // Crop dragging
     if (activeTool === 'crop' && cropDragHandle && cropDragStart && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const deltaX = (e.clientX - cropDragStart.startX) / (canvas.clientWidth);
-      const deltaY = (e.clientY - cropDragStart.startY) / (canvas.clientHeight);
-      const initial = cropDragStart.initialCrop;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const canvasWidth = rect.width;
+      const canvasHeight = rect.height;
+      if (canvasWidth > 0 && canvasHeight > 0) {
+        const deltaX = (e.clientX - cropDragStart.startX) / canvasWidth;
+        const deltaY = (e.clientY - cropDragStart.startY) / canvasHeight;
+        const initial = cropDragStart.initialCrop;
 
-      let newX = initial.x;
-      let newY = initial.y;
-      let newW = initial.width;
-      let newH = initial.height;
+        let newX = initial.x;
+        let newY = initial.y;
+        let newW = initial.width;
+        let newH = initial.height;
 
-      if (cropDragHandle === 'move') {
-        newX = Math.max(0, Math.min(1 - newW, initial.x + deltaX));
-        newY = Math.max(0, Math.min(1 - newH, initial.y + deltaY));
-      } else {
-        if (cropDragHandle.includes('w')) {
-          const maxLeft = initial.x + initial.width - 0.05;
-          newX = Math.max(0, Math.min(maxLeft, initial.x + deltaX));
-          newW = initial.width - (newX - initial.x);
-        }
-        if (cropDragHandle.includes('e')) {
-          newW = Math.max(0.05, Math.min(1 - initial.x, initial.width + deltaX));
-        }
-        if (cropDragHandle.includes('n')) {
-          const maxTop = initial.y + initial.height - 0.05;
-          newY = Math.max(0, Math.min(maxTop, initial.y + deltaY));
-          newH = initial.height - (newY - initial.y);
-        }
-        if (cropDragHandle.includes('s')) {
-          newH = Math.max(0.05, Math.min(1 - initial.y, initial.height + deltaY));
-        }
+        if (cropDragHandle === 'move') {
+          newX = Math.max(0, Math.min(1 - newW, initial.x + deltaX));
+          newY = Math.max(0, Math.min(1 - newH, initial.y + deltaY));
+        } else {
+          if (cropDragHandle.includes('w')) {
+            const maxLeft = initial.x + initial.width - 0.05;
+            newX = Math.max(0, Math.min(maxLeft, initial.x + deltaX));
+            newW = initial.width - (newX - initial.x);
+          }
+          if (cropDragHandle.includes('e')) {
+            newW = Math.max(0.05, Math.min(1 - initial.x, initial.width + deltaX));
+          }
+          if (cropDragHandle.includes('n')) {
+            const maxTop = initial.y + initial.height - 0.05;
+            newY = Math.max(0, Math.min(maxTop, initial.y + deltaY));
+            newH = initial.height - (newY - initial.y);
+          }
+          if (cropDragHandle.includes('s')) {
+            newH = Math.max(0.05, Math.min(1 - initial.y, initial.height + deltaY));
+          }
 
-        // Apply aspect ratio constraint if defined
-        if (initial.aspectRatio && initial.aspectRatio !== 'free') {
-          const parts = initial.aspectRatio.split(':').map(Number);
-          const targetRatio =
-            parts.length === 2 && parts[1] > 0 ? parts[0] / parts[1] : 1;
-          const imageAspect =
-            (imageRef.current?.width || 1) / (imageRef.current?.height || 1);
-          newH = newW / (targetRatio / imageAspect);
-          if (newY + newH > 1) {
-            newH = 1 - newY;
-            newW = newH * (targetRatio / imageAspect);
+          // Apply aspect ratio constraint if defined
+          if (initial.aspectRatio && initial.aspectRatio !== 'free') {
+            const parts = initial.aspectRatio.split(':').map(Number);
+            const targetRatio =
+              parts.length === 2 && parts[1] > 0 ? parts[0] / parts[1] : 1;
+            const imageAspect =
+              (imageRef.current?.width || 1) / (imageRef.current?.height || 1);
+            newH = newW / (targetRatio / imageAspect);
+            if (newY + newH > 1) {
+              newH = 1 - newY;
+              newW = newH * (targetRatio / imageAspect);
+            }
           }
         }
-      }
 
-      onCropChange({
-        ...initial,
-        x: Number(newX.toFixed(4)),
-        y: Number(newY.toFixed(4)),
-        width: Number(newW.toFixed(4)),
-        height: Number(newH.toFixed(4)),
-      });
+        const nextCrop: PhotoCrop = {
+          ...initial,
+          x: Number(newX.toFixed(4)),
+          y: Number(newY.toFixed(4)),
+          width: Number(newW.toFixed(4)),
+          height: Number(newH.toFixed(4)),
+        };
+
+        setLiveCrop(nextCrop);
+        onCropChange(nextCrop);
+      }
+      return;
+    }
+
+    // Text scaling (corner handle dragging)
+    if (textScaleState) {
+      const currentDist = Math.hypot(e.clientX - textScaleState.centerX, e.clientY - textScaleState.centerY);
+      const scaleFactor = currentDist / textScaleState.initialDistance;
+      const newFontSize = Math.max(8, Math.min(500, Math.round(textScaleState.initialFontSize * scaleFactor)));
+      setTextScaleState((prev) => (prev ? { ...prev, currentFontSize: newFontSize } : null));
+      onUpdateText?.(textScaleState.id, { fontSize: newFontSize });
+      return;
+    }
+
+    // Text rotating (top handle dragging)
+    if (textRotateState) {
+      const newRot = calculateRotation(
+        textRotateState.centerX,
+        textRotateState.centerY,
+        e.clientX,
+        e.clientY,
+        e.shiftKey
+      );
+      setTextRotateState((prev) => (prev ? { ...prev, currentRotation: newRot } : null));
+      onUpdateText?.(textRotateState.id, { rotation: newRot });
       return;
     }
 
@@ -439,16 +529,28 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
       setCurrentStroke(null);
     }
     if (cropDragHandle) {
+      if (liveCrop) {
+        onCropChange(liveCrop);
+      }
       setCropDragHandle(null);
       setCropDragStart(null);
+      setLiveCrop(null);
     }
     if (textDragState) {
       onUpdateTextPosition(textDragState.id, textDragState.currentX, textDragState.currentY);
       setTextDragState(null);
     }
+    if (textScaleState) {
+      onUpdateText?.(textScaleState.id, { fontSize: textScaleState.currentFontSize });
+      setTextScaleState(null);
+    }
+    if (textRotateState) {
+      onUpdateText?.(textRotateState.id, { rotation: textRotateState.currentRotation });
+      setTextRotateState(null);
+    }
   };
 
-  const currentCrop = photo.crop || { x: 0, y: 0, width: 1, height: 1 };
+  const currentCrop = liveCrop || photo.crop || { x: 0, y: 0, width: 1, height: 1 };
 
   return (
     <div
@@ -542,12 +644,17 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
               }
 
               const isDraggingThis = textDragState?.id === t.id;
+              const isScalingThis = textScaleState?.id === t.id;
+              const isRotatingThis = textRotateState?.id === t.id;
               const posX = isDraggingThis ? textDragState.currentX : t.x;
               const posY = isDraggingThis ? textDragState.currentY : t.y;
+              const currentFontSize = isScalingThis ? textScaleState.currentFontSize : t.fontSize;
+              const currentRotation = isRotatingThis ? textRotateState.currentRotation : (t.rotation || 0);
 
               return (
                 <div
                   key={t.id}
+                  data-text-id={t.id}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -577,10 +684,10 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                     left: `${posX * 100}%`,
                     top: `${posY * 100}%`,
                     touchAction: 'none',
-                    willChange: isDraggingThis ? 'left, top' : 'auto',
-                    transform: `translate(-50%, -50%) ${t.rotation ? `rotate(${t.rotation}deg)` : ''}`,
+                    willChange: isDraggingThis || isScalingThis || isRotatingThis ? 'left, top, transform' : 'auto',
+                    transform: `translate(-50%, -50%) ${currentRotation ? `rotate(${currentRotation}deg)` : ''}`,
                     fontFamily: t.fontFamily || 'Inter',
-                    fontSize: `${t.fontSize}px`,
+                    fontSize: `${currentFontSize}px`,
                     fontWeight: t.fontWeight || 600,
                     color: t.color,
                     textAlign: t.textAlign,
@@ -601,9 +708,51 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                       ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900 bg-slate-900/40 shadow-lg'
                       : 'hover:ring-1 hover:ring-blue-400/60'
                   }`}
-                  title="Click to select, double-click to edit text"
+                  title="Click to select, drag corners to scale, top to rotate, double-click to edit text"
                 >
                   {t.text}
+
+                  {/* Direct manipulation handles when selected */}
+                  {isSelected && (
+                    <>
+                      {/* Rotation Stalk and Touch Handle */}
+                      <div
+                        className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto cursor-grab active:cursor-grabbing z-40 select-none"
+                        style={{ touchAction: 'none' }}
+                        onPointerDown={(e) => handleRotatePointerDown(t, e)}
+                        title="Drag to rotate text"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-white text-blue-600 border-2 border-blue-500 flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform">
+                          <RotateCw className="w-3 h-3" />
+                        </div>
+                        <div className="w-[1.5px] h-2.5 bg-blue-500" />
+                      </div>
+
+                      {/* 4 Corner Scale Handles */}
+                      {(['nw', 'ne', 'se', 'sw'] as const).map((pos) => {
+                        const posClasses =
+                          pos === 'nw'
+                            ? '-top-3.5 -left-3.5 cursor-nwse-resize'
+                            : pos === 'ne'
+                            ? '-top-3.5 -right-3.5 cursor-nesw-resize'
+                            : pos === 'se'
+                            ? '-bottom-3.5 -right-3.5 cursor-nwse-resize'
+                            : '-bottom-3.5 -left-3.5 cursor-nesw-resize';
+
+                        return (
+                          <div
+                            key={pos}
+                            className={`absolute w-7 h-7 flex items-center justify-center pointer-events-auto z-40 select-none ${posClasses}`}
+                            style={{ touchAction: 'none' }}
+                            onPointerDown={(e) => handleScalePointerDown(t, e)}
+                            title="Drag to scale text size"
+                          >
+                            <div className="w-3.5 h-3.5 bg-white border-2 border-blue-500 rounded-full shadow-md hover:scale-125 transition-transform" />
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -655,6 +804,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
             <div
               onPointerDown={(e) => {
                 e.stopPropagation();
+                e.currentTarget.setPointerCapture?.(e.pointerId);
                 setCropDragHandle('move');
                 setCropDragStart({
                   startX: e.clientX,
@@ -667,8 +817,9 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                 top: `${currentCrop.y * 100}%`,
                 width: `${currentCrop.width * 100}%`,
                 height: `${currentCrop.height * 100}%`,
+                touchAction: 'none',
               }}
-              className="absolute border-2 border-white cursor-move shadow-sm"
+              className="absolute border-2 border-white cursor-move shadow-sm select-none"
             >
               {/* 3x3 Rule of thirds grid lines */}
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
@@ -711,6 +862,7 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                       key={pos}
                       onPointerDown={(e) => {
                         e.stopPropagation();
+                        e.currentTarget.setPointerCapture?.(e.pointerId);
                         setCropDragHandle(pos);
                         setCropDragStart({
                           startX: e.clientX,
@@ -718,7 +870,8 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                           initialCrop: { ...currentCrop },
                         });
                       }}
-                      className={`absolute w-3.5 h-3.5 bg-white border-2 border-slate-900 rounded-sm ${getPosStyle()}`}
+                      style={{ touchAction: 'none' }}
+                      className={`absolute w-4 h-4 bg-white border-2 border-slate-900 rounded-sm touch-none select-none z-30 ${getPosStyle()}`}
                     />
                   );
                 }

@@ -5,6 +5,8 @@ import { Check, X, RotateCcw, Crop as CropIcon } from 'lucide-react';
 interface CropPanelProps {
   crop: PhotoCrop | null | undefined;
   activePreset?: string;
+  imageWidth?: number;
+  imageHeight?: number;
   onSelectPreset?: (preset: string) => void;
   onChange?: (crop: PhotoCrop) => void;
   onApply?: () => void;
@@ -27,6 +29,8 @@ const CROP_PRESETS = [
 export const CropPanel: React.FC<CropPanelProps> = ({
   crop,
   activePreset,
+  imageWidth = 1,
+  imageHeight = 1,
   onSelectPreset,
   onChange,
   onApply,
@@ -38,19 +42,62 @@ export const CropPanel: React.FC<CropPanelProps> = ({
   const currentPreset = activePreset || crop?.aspectRatio || 'free';
   const handleApply = onApply || onApplyCrop || (() => {});
   const handleCancel = onCancel || onCancelCrop || (() => {});
-  const handleReset = onResetCrop || onCancel || (() => {});
+  const handleReset =
+    onResetCrop ||
+    (() => {
+      if (onChange) {
+        onChange({
+          x: 0,
+          y: 0,
+          width: 1,
+          height: 1,
+          aspectRatio: undefined,
+        });
+      }
+    });
   const handleSelectPreset =
     onSelectPreset ||
     ((presetId: string) => {
-      if (onChange) {
+      if (!onChange) return;
+      if (presetId === 'free') {
         onChange({
           x: crop?.x ?? 0,
           y: crop?.y ?? 0,
           width: crop?.width ?? 1,
           height: crop?.height ?? 1,
-          aspectRatio: presetId === 'free' ? undefined : presetId,
+          aspectRatio: undefined,
         });
+        return;
       }
+
+      const preset = CROP_PRESETS.find((p) => p.id === presetId);
+      if (!preset || !preset.ratio) return;
+
+      const targetRatio = preset.ratio;
+      const imgAspect = Math.max(0.001, (imageWidth || 1) / (imageHeight || 1));
+
+      // Calculate new normalized crop width & height centered on the image
+      let newW = 1;
+      let newH = 1;
+
+      if (targetRatio >= imgAspect) {
+        newW = 1;
+        newH = Math.min(1, Math.max(0.05, (1 / targetRatio) * imgAspect));
+      } else {
+        newH = 1;
+        newW = Math.min(1, Math.max(0.05, targetRatio / imgAspect));
+      }
+
+      const newX = Math.max(0, (1 - newW) / 2);
+      const newY = Math.max(0, (1 - newH) / 2);
+
+      onChange({
+        x: Number(newX.toFixed(4)),
+        y: Number(newY.toFixed(4)),
+        width: Number(newW.toFixed(4)),
+        height: Number(newH.toFixed(4)),
+        aspectRatio: presetId,
+      });
     });
   return (
     <div className="p-3.5 space-y-4 select-none text-pixora-text text-xs">
