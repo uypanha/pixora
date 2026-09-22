@@ -329,6 +329,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({ onOpenLauncher }) => {
       opacity: 1,
       rotation: 0,
       textAlign: 'center',
+      lineHeight: 1.3,
+      letterSpacing: 0,
     };
     updatePhoto(
       (prev) => ({

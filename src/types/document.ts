@@ -211,6 +211,8 @@ export interface PhotoTextOverlay {
   opacity: number;
   textAlign: 'left' | 'center' | 'right';
   rotation: number;
+  lineHeight?: number;
+  letterSpacing?: number;
   // Text effects
   shadow?: {
     enabled: boolean;
