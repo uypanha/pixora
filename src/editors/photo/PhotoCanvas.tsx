@@ -857,6 +857,9 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                         return 'top-1/2 right-0 translate-x-1/2 -translate-y-1/2 cursor-ew-resize';
                     }
                   };
+
+                  const isCorner = ['nw', 'ne', 'sw', 'se'].includes(pos);
+
                   return (
                     <div
                       key={pos}
@@ -871,8 +874,19 @@ export const PhotoCanvas: React.FC<PhotoCanvasProps> = ({
                         });
                       }}
                       style={{ touchAction: 'none' }}
-                      className={`absolute w-4 h-4 bg-white border-2 border-slate-900 rounded-sm touch-none select-none z-30 ${getPosStyle()}`}
-                    />
+                      className={`absolute w-11 h-11 flex items-center justify-center pointer-events-auto touch-none select-none z-30 ${getPosStyle()}`}
+                    >
+                      {/* Visible handle pill / corner indicator */}
+                      <div
+                        className={`bg-white border-2 border-slate-950 shadow-lg pointer-events-none transition-transform hover:scale-110 active:scale-125 ${
+                          isCorner
+                            ? 'w-5 h-5 rounded-md'
+                            : pos === 'n' || pos === 's'
+                            ? 'w-7 h-2.5 rounded-full'
+                            : 'w-2.5 h-7 rounded-full'
+                        }`}
+                      />
+                    </div>
                   );
                 }
               )}
