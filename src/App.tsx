@@ -18,10 +18,13 @@ import { MobileBottomSheet } from './mobile/MobileBottomSheet';
 import { useKeyboardShortcuts } from './editor/shortcuts';
 import { PhotoEditor } from './editors/photo/PhotoEditor';
 
+import { HomeScreen } from './components/home/HomeScreen';
+
 function EditorApp() {
   const { document, setDocument } = useDocument();
   const { status: autosaveStatus } = useAutosave(document);
 
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'editor'>('home');
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
@@ -61,12 +64,9 @@ function EditorApp() {
         (Object.keys(recovered.objects || {}).length > 0 || !!recovered.photo);
       if (hasContent) {
         setDocument(recovered, true);
-        // Show launcher with "Continue Editing" banner
-        setIsLauncherOpen(true);
-      } else {
-        // First time opening: show launcher to choose a preset
-        setIsLauncherOpen(true);
       }
+      // Home screen is the primary entry point
+      setCurrentScreen('home');
     }
     checkLocalRecovery();
   }, [setDocument]);
@@ -74,6 +74,25 @@ function EditorApp() {
   useKeyboardShortcuts(() => {
     hiddenFileInputRef.current?.click();
   });
+
+  const hasActiveContent =
+    Object.keys(document.objects || {}).length > 0 || !!document.photo;
+
+  if (currentScreen === 'home') {
+    return (
+      <HomeScreen
+        onOpenProject={(doc) => {
+          setDocument(doc, true);
+          setCurrentScreen('editor');
+        }}
+        onResumeActiveProject={
+          hasActiveContent ? () => setCurrentScreen('editor') : undefined
+        }
+        hasActiveProject={hasActiveContent}
+        activeProjectName={document.metadata.name}
+      />
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-pixora-bg select-none">
@@ -97,15 +116,15 @@ function EditorApp() {
       />
 
       {document.projectType === 'photo' ? (
-        <PhotoEditor onOpenLauncher={() => setIsLauncherOpen(true)} />
+        <PhotoEditor onOpenLauncher={() => setCurrentScreen('home')} />
       ) : (
         <>
           {/* Top Header */}
           {isMobile ? (
-            <MobileTopBar onOpenLauncher={() => setIsLauncherOpen(true)} />
+            <MobileTopBar onOpenLauncher={() => setCurrentScreen('home')} />
           ) : (
             <TopToolbar
-              onOpenLauncher={() => setIsLauncherOpen(true)}
+              onOpenLauncher={() => setCurrentScreen('home')}
               autosaveStatus={autosaveStatus}
             />
           )}
@@ -148,10 +167,9 @@ function EditorApp() {
         onSelectProject={doc => {
           setDocument(doc, true);
           setIsLauncherOpen(false);
+          setCurrentScreen('editor');
         }}
-        hasActiveProject={
-          Object.keys(document.objects || {}).length > 0 || !!document.photo
-        }
+        hasActiveProject={hasActiveContent}
         activeProjectName={document.metadata.name}
       />
     </div>
