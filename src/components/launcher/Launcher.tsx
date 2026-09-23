@@ -180,7 +180,7 @@ export const Launcher: React.FC<LauncherProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-2.5 sm:p-4 select-none">
       <input
         ref={fileInputRef}
         type="file"
@@ -196,38 +196,39 @@ export const Launcher: React.FC<LauncherProps> = ({
         onChange={handlePhotoUpload}
       />
 
-      <div className="bg-pixora-surface border border-pixora-border rounded-2xl shadow-pixora-modal w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-pixora-surface border border-pixora-border rounded-2xl shadow-pixora-modal w-full max-w-3xl max-h-[94vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-pixora-border bg-pixora-surface">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-5 border-b border-pixora-border bg-pixora-surface gap-3">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md flex-shrink-0">
               <span className="text-white text-sm font-black tracking-tighter">P</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-bold text-white tracking-wide flex items-center space-x-2">
                 <span>Pixora</span>
-                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-pixora-elevated text-pixora-selection border border-pixora-border">
+                <span className="text-[10px] sm:text-[11px] font-normal px-1.5 sm:px-2 py-0.5 rounded-full bg-pixora-elevated text-pixora-selection border border-pixora-border whitespace-nowrap">
                   Local-First
                 </span>
               </h2>
-              <p className="text-xs text-pixora-text-muted">
+              <p className="text-xs text-pixora-text-muted truncate max-w-[180px] xs:max-w-xs sm:max-w-none">
                 Create something beautiful directly on your device
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <button
               onClick={handleOpenLocalFile}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-pixora-elevated hover:bg-pixora-hover text-xs font-medium text-pixora-text rounded-lg border border-pixora-border transition-colors"
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-pixora-elevated hover:bg-pixora-hover text-xs font-medium text-pixora-text rounded-lg border border-pixora-border transition-colors whitespace-nowrap"
             >
-              <FolderOpen size={14} />
-              <span>Open .pixora File</span>
+              <FolderOpen size={14} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Open .pixora File</span>
+              <span className="sm:hidden">Open File</span>
             </button>
             {hasActiveProject && (
               <button
                 onClick={onClose}
-                className="text-pixora-text-muted hover:text-white p-1 rounded-lg hover:bg-pixora-hover transition-colors"
+                className="text-pixora-text-muted hover:text-white p-1 rounded-lg hover:bg-pixora-hover transition-colors flex-shrink-0"
               >
                 <X size={20} />
               </button>
@@ -237,17 +238,19 @@ export const Launcher: React.FC<LauncherProps> = ({
 
         {/* Local Recovery Banner */}
         {hasActiveProject && (
-          <div className="px-6 py-3 bg-gradient-to-r from-indigo-950/40 to-sky-950/30 border-b border-pixora-border/60 flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-xs">
-              <FileCheck size={16} className="text-emerald-400" />
-              <span className="text-white font-medium">We found a locally saved project:</span>
-              <span className="text-pixora-selection font-semibold truncate max-w-xs">
-                "{activeProjectName || 'Untitled Project'}"
-              </span>
+          <div className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-indigo-950/40 to-sky-950/30 border-b border-pixora-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+            <div className="flex items-center space-x-2 text-xs min-w-0 flex-1">
+              <FileCheck size={16} className="text-emerald-400 flex-shrink-0" />
+              <div className="flex items-center space-x-1.5 min-w-0">
+                <span className="text-white font-medium whitespace-nowrap">Locally saved project:</span>
+                <span className="text-pixora-selection font-semibold truncate max-w-[140px] xs:max-w-[200px] sm:max-w-xs">
+                  "{activeProjectName || 'Untitled Project'}"
+                </span>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="flex items-center space-x-1 px-3 py-1 bg-pixora-accent hover:bg-pixora-accent-hover text-white text-xs font-semibold rounded-md shadow-sm transition-all"
+              className="flex items-center justify-center space-x-1 px-3 py-1.5 sm:py-1 bg-pixora-accent hover:bg-pixora-accent-hover text-white text-xs font-semibold rounded-md shadow-sm transition-all whitespace-nowrap self-end sm:self-auto w-full sm:w-auto"
             >
               <span>Continue Editing</span>
               <ArrowRight size={13} />
@@ -256,7 +259,7 @@ export const Launcher: React.FC<LauncherProps> = ({
         )}
 
         {/* Tabs */}
-        <div className="flex items-center border-b border-pixora-border px-6 bg-pixora-bg">
+        <div className="flex items-center border-b border-pixora-border px-4 sm:px-6 bg-pixora-bg">
           <button
             onClick={() => setActiveTab('create')}
             className={`py-3 text-xs font-semibold mr-6 border-b-2 transition-colors ${
@@ -283,22 +286,22 @@ export const Launcher: React.FC<LauncherProps> = ({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {activeTab === 'create' ? (
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               {/* Project Type Switcher */}
-              <div className="grid grid-cols-2 gap-3 p-1 bg-pixora-bg rounded-xl border border-pixora-border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 p-1 bg-pixora-bg rounded-xl border border-pixora-border">
                 <button
                   type="button"
                   onClick={() => setProjectTypeTab('canvas')}
-                  className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                  className={`flex items-start sm:items-center gap-3 p-3 rounded-lg text-left transition-all ${
                     projectTypeTab === 'canvas'
                       ? 'bg-pixora-elevated border border-pixora-accent/40 shadow-sm'
                       : 'hover:bg-pixora-hover/60 border border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
                   <div
-                    className={`p-2 rounded-lg ${
+                    className={`p-2 rounded-lg flex-shrink-0 ${
                       projectTypeTab === 'canvas'
                         ? 'bg-sky-500/20 text-sky-400'
                         : 'bg-slate-800 text-slate-400'
@@ -306,8 +309,8 @@ export const Launcher: React.FC<LauncherProps> = ({
                   >
                     <Layout size={20} />
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
                       <span>Canvas Project</span>
                       {projectTypeTab === 'canvas' && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-400 font-normal">
@@ -315,7 +318,7 @@ export const Launcher: React.FC<LauncherProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-pixora-text-dim">
+                    <div className="text-[11px] text-pixora-text-dim mt-0.5 leading-snug">
                       Multi-page design, vector shapes, frames, layouts
                     </div>
                   </div>
@@ -324,14 +327,14 @@ export const Launcher: React.FC<LauncherProps> = ({
                 <button
                   type="button"
                   onClick={() => setProjectTypeTab('photo')}
-                  className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                  className={`flex items-start sm:items-center gap-3 p-3 rounded-lg text-left transition-all ${
                     projectTypeTab === 'photo'
                       ? 'bg-pixora-elevated border border-emerald-500/40 shadow-sm'
                       : 'hover:bg-pixora-hover/60 border border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
                   <div
-                    className={`p-2 rounded-lg ${
+                    className={`p-2 rounded-lg flex-shrink-0 ${
                       projectTypeTab === 'photo'
                         ? 'bg-emerald-500/20 text-emerald-400'
                         : 'bg-slate-800 text-slate-400'
@@ -339,8 +342,8 @@ export const Launcher: React.FC<LauncherProps> = ({
                   >
                     <Camera size={20} />
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
                       <span>Photo Project</span>
                       {projectTypeTab === 'photo' && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-normal">
@@ -348,7 +351,7 @@ export const Launcher: React.FC<LauncherProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-pixora-text-dim">
+                    <div className="text-[11px] text-pixora-text-dim mt-0.5 leading-snug">
                       Single-image editor, non-destructive filters & retouch
                     </div>
                   </div>
@@ -357,7 +360,7 @@ export const Launcher: React.FC<LauncherProps> = ({
 
               {/* Project Name */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex-1 max-w-sm">
+                <div className="flex-1 sm:max-w-sm">
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-pixora-text-muted mb-1">
                     Project Name
                   </label>
@@ -378,7 +381,7 @@ export const Launcher: React.FC<LauncherProps> = ({
                   <div className="flex items-end">
                     <button
                       onClick={handleCreateSample}
-                      className="px-3.5 py-2 bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/40 rounded-lg text-xs font-medium transition-all"
+                      className="w-full sm:w-auto px-3.5 py-2 bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/40 rounded-lg text-xs font-medium transition-all text-center"
                     >
                       ✨ Load Sample Project
                     </button>
@@ -387,7 +390,7 @@ export const Launcher: React.FC<LauncherProps> = ({
                   <div className="flex items-end">
                     <button
                       onClick={handleCreateSamplePhoto}
-                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-200 border border-emerald-500/40 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
+                      className="w-full sm:w-auto px-3.5 py-2 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-200 border border-emerald-500/40 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5"
                     >
                       <Sparkles size={13} />
                       <span>Load Sample Photo</span>
@@ -477,10 +480,10 @@ export const Launcher: React.FC<LauncherProps> = ({
                 <div className="space-y-4">
                   <div
                     onClick={() => photoInputRef.current?.click()}
-                    className="p-8 border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/70 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center text-center group"
+                    className="p-6 sm:p-8 border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/70 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center text-center group"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <UploadCloud size={28} />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud size={26} />
                     </div>
                     <div className="text-sm font-bold text-white mb-1">
                       Choose a Photo from Your Device
@@ -490,14 +493,14 @@ export const Launcher: React.FC<LauncherProps> = ({
                     </div>
                     <button
                       type="button"
-                      className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all"
+                      className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all w-full sm:w-auto"
                     >
                       Browse Files
                     </button>
                   </div>
 
                   {/* Photo Editor Feature Highlights */}
-                  <div className="grid grid-cols-3 gap-3 text-xs text-pixora-text-dim">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs text-pixora-text-dim">
                     <div className="p-3 bg-pixora-elevated rounded-xl border border-pixora-border">
                       <div className="font-semibold text-white mb-1">Non-Destructive</div>
                       <div>Original photo asset is preserved. Adjustments and filters are live-rendered.</div>
@@ -598,12 +601,12 @@ export const Launcher: React.FC<LauncherProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="px-6 py-3.5 bg-pixora-elevated border-t border-pixora-border flex items-center justify-between text-[11px] text-pixora-text-dim">
+        <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-pixora-elevated border-t border-pixora-border flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-0 text-[11px] text-pixora-text-dim text-center sm:text-left">
           <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
             <span>Your project is stored on this device. No cloud storage, no account.</span>
           </div>
-          <span>Format: .pixora (v2)</span>
+          <span className="text-pixora-text-dim/80 whitespace-nowrap">Format: .pixora (v2)</span>
         </div>
       </div>
     </div>
