@@ -40,6 +40,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) =>
       <div className="flex items-center space-x-2">
         <button
           onClick={onOpenLauncher}
+          title="Home / Recent Projects"
           className="flex items-center space-x-1.5 focus:outline-none"
         >
           <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-sm">

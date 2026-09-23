@@ -176,6 +176,58 @@ export async function deleteRecentProject(id: string): Promise<void> {
 }
 
 /**
+ * Duplicate a project in recents
+ */
+export async function duplicateRecentProject(id: string): Promise<RecentProjectItem | null> {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_RECENTS, 'readwrite');
+      const store = tx.objectStore(STORE_RECENTS);
+      const req = store.get(id);
+
+      req.onsuccess = () => {
+        const item = req.result as RecentProjectItem | undefined;
+        if (!item) {
+          resolve(null);
+          return;
+        }
+
+        const newId = `project-${Date.now()}`;
+        const now = new Date().toISOString();
+        const newDoc: PixoraDocument = {
+          ...item.data,
+          metadata: {
+            ...item.data.metadata,
+            id: newId,
+            name: `${item.name} (Copy)`,
+            createdAt: now,
+            updatedAt: now,
+          },
+        };
+
+        const newItem: RecentProjectItem = {
+          ...item,
+          id: newId,
+          name: `${item.name} (Copy)`,
+          createdAt: now,
+          updatedAt: now,
+          data: newDoc,
+        };
+
+        store.put(newItem);
+        tx.oncomplete = () => resolve(newItem);
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('Failed to duplicate recent project:', err);
+    return null;
+  }
+}
+
+/**
  * Clear all project data from local browser storage
  */
 export async function clearAllProjects(): Promise<void> {

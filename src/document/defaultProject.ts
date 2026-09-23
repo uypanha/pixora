@@ -47,6 +47,7 @@ export function createDefaultProject(
   return {
     format: 'pixora',
     version: 1,
+    projectType: 'canvas',
     metadata: {
       id: generateId('proj'),
       name,
@@ -312,6 +313,7 @@ export function createSampleProject(): PixoraDocument {
   return {
     format: 'pixora',
     version: 1,
+    projectType: 'canvas',
     metadata: {
       id: generateId('proj'),
       name: 'Mobile App Concept',

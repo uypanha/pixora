@@ -123,7 +123,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         {/* Pixora Logo Icon & Launcher trigger */}
         <button
           onClick={onOpenLauncher}
-          title="Open Project Launcher / Start Screen"
+          title="Home / Recent Projects"
           className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-pixora-hover transition-colors group"
         >
           <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-sm">
