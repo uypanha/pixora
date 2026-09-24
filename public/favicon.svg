@@ -1,19 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs>
-    <linearGradient id="pixora-grad-1" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="50%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#a855f7"/>
-    </linearGradient>
-    <linearGradient id="pixora-grad-2" x1="16" y1="20" x2="48" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.4"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="#0f1013"/>
-  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#2c2f38" stroke-width="2"/>
-  <!-- Stylized P layer shape -->
-  <path d="M18 46V18H34C40.6274 18 46 23.3726 46 30C46 36.6274 40.6274 42 34 42H28V46H18Z" fill="url(#pixora-grad-1)"/>
-  <circle cx="34" cy="30" r="5" fill="#0f1013"/>
-  <path d="M26 24H34C37.3137 24 40 26.6863 40 30C40 33.3137 37.3137 36 34 36H26V24Z" fill="url(#pixora-grad-2)" opacity="0.3"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <rect width="40" height="40" rx="10" fill="#4F46E5"/>
+  <rect x="9" y="9" width="13" height="13" rx="3" fill="#EEF2FF" fill-opacity="0.95"/>
+  <circle cx="25" cy="15" r="4.5" fill="#C7D2FE"/>
+  <path d="M11 28C11 25.7909 12.7909 24 15 24H27C29.2091 24 31 25.7909 31 28V29C31 30.1046 30.1046 31 29 31H13C11.8954 31 11 30.1046 11 29V28Z" fill="#FFFFFF"/>
+  <path d="M19 24L23 18L27 24H19Z" fill="#6366F1" fill-opacity="0.4"/>
 </svg>

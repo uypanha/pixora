@@ -37,6 +37,7 @@ import {
 } from '../../storage/db';
 import { importPixoraFile } from '../../import/pixoraImporter';
 import { savePixoraFile } from '../../export/pixoraExporter';
+import { PixoraLogo } from '../common/PixoraLogo';
 
 interface HomeScreenProps {
   onOpenProject: (doc: PixoraDocument) => void;
@@ -252,9 +253,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <header className="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-4 flex-shrink-0 z-20">
         {/* Brand */}
         <div className="flex items-center space-x-3 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
-            <span className="text-white text-sm font-black tracking-tighter">P</span>
-          </div>
+          <PixoraLogo size={32} className="w-8 h-8 rounded-lg shadow-md" />
           <div className="flex items-center space-x-2">
             <h1 className="text-base font-bold text-white tracking-wide">Pixora</h1>
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-sky-400 border border-slate-700/80">

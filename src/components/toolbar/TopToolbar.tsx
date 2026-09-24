@@ -21,6 +21,7 @@ import { savePixoraFile } from '../../export/pixoraExporter';
 import { importPixoraFile } from '../../import/pixoraImporter';
 import { importImageFile } from '../../import/imageImporter';
 import { ShapesDropdown } from './ShapesDropdown';
+import { PixoraLogo } from '../common/PixoraLogo';
 
 interface TopToolbarProps {
   onOpenLauncher: () => void;
@@ -126,9 +127,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           title="Home / Recent Projects"
           className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-pixora-hover transition-colors group"
         >
-          <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-sm">
-            <span className="text-white text-xs font-black tracking-tighter">P</span>
-          </div>
+          <PixoraLogo size={24} className="w-6 h-6 rounded-md shadow-sm" />
           <span className="font-bold text-sm tracking-wide text-white group-hover:text-pixora-selection transition-colors">
             Pixora
           </span>

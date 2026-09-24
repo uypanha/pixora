@@ -31,6 +31,7 @@ import {
   RecentProjectItem,
 } from '../../storage/db';
 import { importPixoraFile } from '../../import/pixoraImporter';
+import { PixoraLogo } from '../common/PixoraLogo';
 
 interface LauncherProps {
   isOpen: boolean;
@@ -200,9 +201,7 @@ export const Launcher: React.FC<LauncherProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-5 border-b border-pixora-border bg-pixora-surface gap-3">
           <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md flex-shrink-0">
-              <span className="text-white text-sm font-black tracking-tighter">P</span>
-            </div>
+            <PixoraLogo size={32} className="w-8 h-8 rounded-lg shadow-md flex-shrink-0" />
             <div className="min-w-0">
               <h2 className="text-base font-bold text-white tracking-wide flex items-center space-x-2">
                 <span>Pixora</span>

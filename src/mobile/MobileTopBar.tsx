@@ -4,6 +4,7 @@ import { useDocument } from '../document/documentContext';
 import { useEditor } from '../editor/editorContext';
 import { savePixoraFile } from '../export/pixoraExporter';
 import { importPixoraFile } from '../import/pixoraImporter';
+import { PixoraLogo } from '../components/common/PixoraLogo';
 
 interface MobileTopBarProps {
   onOpenLauncher: () => void;
@@ -43,9 +44,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) =>
           title="Home / Recent Projects"
           className="flex items-center space-x-1.5 focus:outline-none"
         >
-          <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 flex items-center justify-center shadow-sm">
-            <span className="text-white text-xs font-black">P</span>
-          </div>
+          <PixoraLogo size={24} className="w-6 h-6 rounded-md shadow-sm" />
           <span className="font-bold text-sm text-white">Pixora</span>
         </button>
 
