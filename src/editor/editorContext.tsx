@@ -189,3 +189,7 @@ export function useEditor() {
   }
   return context;
 }
+
+export function useOptionalEditor() {
+  return useContext(EditorContext);
+}
