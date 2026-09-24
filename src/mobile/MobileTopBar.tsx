@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Menu, Download, FolderOpen, Plus, Maximize2, Undo2, Redo2 } from 'lucide-react';
+import { Menu, Download, FolderOpen, Plus, Maximize2, Undo2, Redo2, ArrowLeft } from 'lucide-react';
 import { useDocument } from '../document/documentContext';
 import { useEditor } from '../editor/editorContext';
 import { savePixoraFile } from '../export/pixoraExporter';
@@ -38,14 +38,16 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) =>
       />
 
       {/* Brand & Project name */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-1.5">
         <button
           onClick={onOpenLauncher}
-          title="Home / Recent Projects"
-          className="flex items-center space-x-1.5 focus:outline-none"
+          title="Back to Projects"
+          aria-label="Back to Projects"
+          className="flex items-center space-x-1 focus:outline-none p-1 -ml-1 rounded-lg hover:bg-white/5 active:scale-95 text-slate-300 hover:text-white transition-all"
         >
-          <PixoraLogo size={24} className="w-6 h-6 rounded-md shadow-sm" />
-          <span className="font-bold text-sm text-white">Pixora</span>
+          <ArrowLeft size={18} className="text-slate-300" />
+          <PixoraLogo size={22} className="w-5.5 h-5.5 rounded-md shadow-sm" />
+          <span className="font-bold text-sm text-white hidden xs:inline">Pixora</span>
         </button>
 
         <span className="text-pixora-border">/</span>

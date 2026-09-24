@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { DocumentProvider, useDocument } from './document/documentContext';
-import { EditorProvider } from './editor/editorContext';
+import { EditorProvider, useEditor } from './editor/editorContext';
+import { PixoraDocument } from './types/document';
 import { useAutosave } from './storage/autosave';
 import { loadActiveProject } from './storage/db';
 import { Canvas } from './canvas/Canvas';
@@ -24,6 +25,13 @@ function EditorApp() {
   const { document, setDocument } = useDocument();
   const { status: autosaveStatus } = useAutosave(document);
 
+  const {
+    setMobileActiveTab,
+    setIsMobileMenuOpen,
+    setIsExportModalOpen,
+    setIsShortcutsModalOpen,
+  } = useEditor();
+
   const [currentScreen, setCurrentScreen] = useState<'home' | 'editor'>('home');
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -32,6 +40,54 @@ function EditorApp() {
 
   // Hidden file input for Cmd+O shortcut
   const hiddenFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const navigateToEditor = (doc?: PixoraDocument) => {
+    if (doc) {
+      setDocument(doc, true);
+    }
+    setCurrentScreen('editor');
+    try {
+      if (window.location.hash !== '#editor') {
+        window.history.pushState({ screen: 'editor' }, '', '#editor');
+      }
+    } catch (_) {}
+  };
+
+  const navigateToHome = () => {
+    setCurrentScreen('home');
+    setMobileActiveTab(null);
+    setIsMobileMenuOpen(false);
+    setIsExportModalOpen(false);
+    setIsShortcutsModalOpen(false);
+    try {
+      if (window.location.hash === '#editor') {
+        if (window.history.state?.screen === 'editor') {
+          window.history.back();
+        } else {
+          window.history.replaceState({ screen: 'home' }, '', window.location.pathname + window.location.search);
+        }
+      }
+    } catch (_) {}
+  };
+
+  // Sync with browser history and phone hardware / gesture back button
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // If user navigates back and hash is not '#editor', go back to home screen instead of exiting
+      if (window.location.hash === '#editor' || e.state?.screen === 'editor') {
+        setCurrentScreen('editor');
+      } else {
+        setCurrentScreen('home');
+        setMobileActiveTab(null);
+        setIsMobileMenuOpen(false);
+        setIsExportModalOpen(false);
+        setIsShortcutsModalOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setMobileActiveTab, setIsMobileMenuOpen, setIsExportModalOpen, setIsShortcutsModalOpen]);
 
   // Responsive breakpoint listener
   useEffect(() => {
@@ -65,8 +121,18 @@ function EditorApp() {
       if (hasContent) {
         setDocument(recovered, true);
       }
-      // Home screen is the primary entry point
-      setCurrentScreen('home');
+      setCurrentScreen(prev => {
+        if (prev === 'editor') return prev;
+        if (window.location.hash === '#editor' && hasContent) {
+          return 'editor';
+        }
+        if (window.location.hash === '#editor') {
+          try {
+            window.history.replaceState({ screen: 'home' }, '', window.location.pathname + window.location.search);
+          } catch (_) {}
+        }
+        return 'home';
+      });
     }
     checkLocalRecovery();
   }, [setDocument]);
@@ -82,11 +148,10 @@ function EditorApp() {
     return (
       <HomeScreen
         onOpenProject={(doc) => {
-          setDocument(doc, true);
-          setCurrentScreen('editor');
+          navigateToEditor(doc);
         }}
         onResumeActiveProject={
-          hasActiveContent ? () => setCurrentScreen('editor') : undefined
+          hasActiveContent ? () => navigateToEditor() : undefined
         }
         hasActiveProject={hasActiveContent}
         activeProjectName={document.metadata.name}
@@ -108,7 +173,7 @@ function EditorApp() {
           const { importPixoraFile } = await import('./import/pixoraImporter');
           try {
             const doc = await importPixoraFile(file);
-            setDocument(doc, true);
+            navigateToEditor(doc);
           } catch (err: any) {
             alert(err.message);
           }
@@ -116,15 +181,15 @@ function EditorApp() {
       />
 
       {document.projectType === 'photo' ? (
-        <PhotoEditor onOpenLauncher={() => setCurrentScreen('home')} />
+        <PhotoEditor onOpenLauncher={navigateToHome} />
       ) : (
         <>
           {/* Top Header */}
           {isMobile ? (
-            <MobileTopBar onOpenLauncher={() => setCurrentScreen('home')} />
+            <MobileTopBar onOpenLauncher={navigateToHome} />
           ) : (
             <TopToolbar
-              onOpenLauncher={() => setCurrentScreen('home')}
+              onOpenLauncher={navigateToHome}
               autosaveStatus={autosaveStatus}
             />
           )}
@@ -165,9 +230,8 @@ function EditorApp() {
         isOpen={isLauncherOpen}
         onClose={() => setIsLauncherOpen(false)}
         onSelectProject={doc => {
-          setDocument(doc, true);
+          navigateToEditor(doc);
           setIsLauncherOpen(false);
-          setCurrentScreen('editor');
         }}
         hasActiveProject={hasActiveContent}
         activeProjectName={document.metadata.name}
