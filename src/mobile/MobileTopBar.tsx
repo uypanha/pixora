@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Menu, Download, FolderOpen, Plus, Maximize2, Undo2, Redo2, ArrowLeft } from 'lucide-react';
+import { Download, FolderOpen, Plus, Maximize2, Undo2, ArrowLeft, ChevronDown, Share2, MoreVertical } from 'lucide-react';
 import { useDocument } from '../document/documentContext';
 import { useEditor } from '../editor/editorContext';
 import { savePixoraFile } from '../export/pixoraExporter';
@@ -11,7 +11,7 @@ interface MobileTopBarProps {
 }
 
 export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) => {
-  const { document, updateMetadata, canUndo, canRedo, undo, redo, setDocument } = useDocument();
+  const { document, updateMetadata, canUndo, undo, setDocument } = useDocument();
   const { setIsExportModalOpen, isMobileMenuOpen, setIsMobileMenuOpen } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -28,7 +28,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) =>
   };
 
   return (
-    <header className="h-12 bg-pixora-surface border-b border-pixora-border px-3 flex items-center justify-between select-none z-30 shrink-0">
+    <header className="h-14 bg-[#0B0F19] border-b border-[#1F2937] px-3 flex items-center justify-between select-none z-30 shrink-0">
       <input
         ref={fileInputRef}
         type="file"
@@ -37,62 +37,58 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({ onOpenLauncher }) =>
         onChange={handleFileChange}
       />
 
-      {/* Brand & Project name */}
-      <div className="flex items-center space-x-1.5">
+      {/* Left: Back button + Brand logo + Project Name with dropdown chevron */}
+      <div className="flex items-center space-x-2 min-w-0">
         <button
           onClick={onOpenLauncher}
           title="Back to Projects"
           aria-label="Back to Projects"
-          className="flex items-center space-x-1 focus:outline-none p-1 -ml-1 rounded-lg hover:bg-white/5 active:scale-95 text-slate-300 hover:text-white transition-all"
+          className="p-1 -ml-1 text-slate-300 hover:text-white rounded-lg active:scale-95 transition-transform"
         >
-          <ArrowLeft size={18} className="text-slate-300" />
-          <PixoraLogo size={22} className="w-5.5 h-5.5 rounded-md shadow-sm" />
-          <span className="font-bold text-sm text-white hidden xs:inline">Pixora</span>
+          <ArrowLeft size={20} />
         </button>
 
-        <span className="text-pixora-border">/</span>
+        <PixoraLogo size={28} className="w-7 h-7 rounded-lg shadow-sm shrink-0" />
 
-        <input
-          type="text"
-          value={document.metadata.name}
-          onChange={e => updateMetadata({ name: e.target.value })}
-          className="bg-transparent text-xs font-medium text-pixora-text outline-none max-w-[110px] truncate"
-        />
+        <div className="flex items-center gap-1 min-w-0">
+          <input
+            type="text"
+            value={document.metadata.name}
+            onChange={e => updateMetadata({ name: e.target.value })}
+            className="bg-transparent text-sm font-semibold text-white outline-none max-w-[120px] sm:max-w-[180px] truncate"
+          />
+          <ChevronDown size={14} className="text-slate-400 shrink-0" />
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex items-center space-x-1">
-        {/* Undo / Redo */}
+      {/* Right: Quick Actions (Undo, Share/Export, More Options) */}
+      <div className="flex items-center space-x-1 shrink-0">
+        {/* Undo */}
         <button
           onClick={undo}
           disabled={!canUndo}
-          className="p-2 text-pixora-text-muted hover:text-white disabled:opacity-30 transition-colors"
+          title="Undo"
+          className="p-2 text-slate-300 hover:text-white disabled:opacity-30 transition-colors active:scale-95"
         >
-          <Undo2 size={16} />
-        </button>
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          className="p-2 text-pixora-text-muted hover:text-white disabled:opacity-30 transition-colors"
-        >
-          <Redo2 size={16} />
+          <Undo2 size={18} />
         </button>
 
-        {/* Quick Save */}
+        {/* Share / Export */}
         <button
-          onClick={() => savePixoraFile(document)}
-          title="Save .pixora"
-          className="p-2 text-pixora-selection hover:text-white transition-colors"
+          onClick={() => setIsExportModalOpen(true)}
+          title="Export / Share"
+          className="p-2 text-slate-300 hover:text-white transition-colors active:scale-95"
         >
-          <Download size={17} />
+          <Share2 size={18} />
         </button>
 
-        {/* Menu toggle */}
+        {/* More Options */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-pixora-text-muted hover:text-white transition-colors"
+          title="More options"
+          className="p-2 text-slate-300 hover:text-white transition-colors active:scale-95"
         >
-          <Menu size={18} />
+          <MoreVertical size={18} />
         </button>
       </div>
 

@@ -5,12 +5,14 @@ interface CanvasGridProps {
   viewport: Viewport;
   enabled: boolean;
   size?: number;
+  isLightBg?: boolean;
 }
 
 export const CanvasGrid: React.FC<CanvasGridProps> = ({
   viewport,
   enabled,
   size = 10,
+  isLightBg = false,
 }) => {
   if (!enabled) return null;
 
@@ -42,8 +44,8 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
             cx={effectiveSize / 2}
             cy={effectiveSize / 2}
             r={1 * Math.min(1.5, Math.max(0.7, viewport.zoom))}
-            fill="#333742"
-            opacity={0.7}
+            fill={isLightBg ? '#64748B' : '#333742'}
+            opacity={isLightBg ? 0.35 : 0.7}
           />
         </pattern>
       </defs>

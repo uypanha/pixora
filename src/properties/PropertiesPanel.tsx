@@ -20,7 +20,7 @@ export const PropertiesPanel: React.FC = () => {
   const primaryObject = selectedObjects[0];
 
   return (
-    <aside className="w-64 bg-pixora-surface border-l border-pixora-border flex flex-col h-full select-none z-20 shrink-0 overflow-y-auto">
+    <aside className="w-full md:w-64 bg-pixora-surface md:border-l border-pixora-border flex flex-col h-full select-none z-20 shrink-0 overflow-y-auto">
       {primaryObject ? (
         <>
           {/* Header */}

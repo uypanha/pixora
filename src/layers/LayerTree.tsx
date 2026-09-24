@@ -154,7 +154,7 @@ export const LayerTree: React.FC = () => {
   const reversedChildren = [...(activePage?.childIds || [])].reverse();
 
   return (
-    <aside className="w-60 bg-pixora-surface border-r border-pixora-border flex flex-col h-full select-none z-20 shrink-0">
+    <aside className="w-full md:w-60 bg-pixora-surface md:border-r border-pixora-border flex flex-col h-full select-none z-20 shrink-0">
       {/* Pages Section */}
       <PagesPanel />
 

@@ -42,7 +42,7 @@ export const MobileFloatingTools: React.FC = () => {
   ];
 
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center bg-pixora-surface/90 backdrop-blur-md border border-pixora-border rounded-2xl p-1 shadow-pixora-lg">
+    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center bg-pixora-surface/90 backdrop-blur-md border border-pixora-border rounded-2xl p-1 shadow-pixora-lg max-w-[95vw] overflow-x-auto">
       <input
         ref={imageInputRef}
         type="file"

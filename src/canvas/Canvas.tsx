@@ -44,6 +44,7 @@ export const Canvas: React.FC = () => {
     hoveredId,
     viewport,
     setViewport,
+    zoomToFit,
     editingTextId,
     setEditingTextId,
     dragState,
@@ -79,6 +80,30 @@ export const Canvas: React.FC = () => {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [editingTextId]);
+
+  // Auto-center objects on mobile on mount
+  const hasAutoCentered = useRef(false);
+  useEffect(() => {
+    if (hasAutoCentered.current) return;
+    if (typeof window === 'undefined' || window.innerWidth >= 768) return;
+
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const allObjects = Object.values(document.objects);
+        if (allObjects.length > 0) {
+          const bounds = getBoundingBox(allObjects);
+          if (bounds) {
+            hasAutoCentered.current = true;
+            zoomToFit(bounds, rect.width, rect.height);
+            if (selectedIds.length === 0 && activePage?.childIds && activePage.childIds.length > 0) {
+              selectObject(activePage.childIds[0], false);
+            }
+          }
+        }
+      }
+    }
+  }, [document.objects, activePage, zoomToFit, selectedIds, selectObject]);
 
   // Screen to Canvas coordinate converter
   const screenToCanvas = useCallback(
@@ -689,11 +714,17 @@ export const Canvas: React.FC = () => {
       ? 'cursor-crosshair'
       : 'cursor-default';
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const canvasBg = isMobile
+    ? (document.settings.canvasColor === '#121316' ? '#F8FAFC' : document.settings.canvasColor || '#F8FAFC')
+    : (document.settings.canvasColor || '#121316');
+  const isLightBg = canvasBg === '#F8FAFC' || canvasBg === '#F1F5F9' || canvasBg === '#ffffff' || canvasBg.toLowerCase() === '#fff';
+
   return (
     <div
       ref={containerRef}
       className={`relative w-full h-full overflow-hidden select-none touch-none ${cursorClass}`}
-      style={{ touchAction: 'none', backgroundColor: document.settings.canvasColor || '#121316' }}
+      style={{ touchAction: 'none', backgroundColor: canvasBg }}
       onWheel={handleWheel}
       onContextMenu={handleCanvasContextMenu}
       onPointerDown={handlePointerDown}
@@ -709,6 +740,7 @@ export const Canvas: React.FC = () => {
         viewport={viewport}
         enabled={document.settings.grid.enabled}
         size={document.settings.grid.size}
+        isLightBg={isLightBg}
       />
 
       {/* SVG Canvas World */}
@@ -749,6 +781,7 @@ export const Canvas: React.FC = () => {
               rotation={singleRotation}
               zoom={viewport.zoom}
               isSingleSelection={isSingleSelection}
+              title={isSingleSelection ? selectedObjects[0]?.name : undefined}
               onHandlePointerDown={handleResizePointerDown}
               onRotatePointerDown={handleRotatePointerDown}
               onMovePointerDown={handleMovePointerDown}

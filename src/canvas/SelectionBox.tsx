@@ -6,6 +6,7 @@ interface SelectionBoxProps {
   rotation?: number;
   zoom: number;
   isSingleSelection: boolean;
+  title?: string;
   onHandlePointerDown: (handle: DragHandle, e: React.PointerEvent) => void;
   onRotatePointerDown: (e: React.PointerEvent) => void;
   onMovePointerDown: (e: React.PointerEvent) => void;
@@ -18,6 +19,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   rotation = 0,
   zoom,
   isSingleSelection,
+  title,
   onHandlePointerDown,
   onRotatePointerDown,
   onMovePointerDown,
@@ -29,7 +31,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   const cy = y + height / 2;
 
   // Visual handle size
-  const visualSize = Math.max(8, 8 / zoom);
+  const visualSize = Math.max(9, 9 / zoom);
   // Touch hit target size: 48px in screen coordinates
   const touchSize = Math.max(48, 48 / zoom);
 
@@ -38,16 +40,25 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
 
   const transform = rotation !== 0 ? `rotate(${rotation} ${cx} ${cy})` : undefined;
 
-  const handles: { handle: DragHandle; hx: number; hy: number; cursor: string }[] = [
-    { handle: 'nw', hx: x, hy: y, cursor: 'nwse-resize' },
-    { handle: 'n', hx: cx, hy: y, cursor: 'ns-resize' },
-    { handle: 'ne', hx: x + width, hy: y, cursor: 'nesw-resize' },
-    { handle: 'e', hx: x + width, hy: cy, cursor: 'ew-resize' },
-    { handle: 'se', hx: x + width, hy: y + height, cursor: 'nwse-resize' },
-    { handle: 's', hx: cx, hy: y + height, cursor: 'ns-resize' },
-    { handle: 'sw', hx: x, hy: y + height, cursor: 'nesw-resize' },
-    { handle: 'w', hx: x, hy: cy, cursor: 'ew-resize' },
-  ];
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const handles: { handle: DragHandle; hx: number; hy: number; cursor: string }[] = isMobile
+    ? [
+        { handle: 'nw', hx: x, hy: y, cursor: 'nwse-resize' },
+        { handle: 'ne', hx: x + width, hy: y, cursor: 'nesw-resize' },
+        { handle: 'se', hx: x + width, hy: y + height, cursor: 'nwse-resize' },
+        { handle: 'sw', hx: x, hy: y + height, cursor: 'nesw-resize' },
+      ]
+    : [
+        { handle: 'nw', hx: x, hy: y, cursor: 'nwse-resize' },
+        { handle: 'n', hx: cx, hy: y, cursor: 'ns-resize' },
+        { handle: 'ne', hx: x + width, hy: y, cursor: 'nesw-resize' },
+        { handle: 'e', hx: x + width, hy: cy, cursor: 'ew-resize' },
+        { handle: 'se', hx: x + width, hy: y + height, cursor: 'nwse-resize' },
+        { handle: 's', hx: cx, hy: y + height, cursor: 'ns-resize' },
+        { handle: 'sw', hx: x, hy: y + height, cursor: 'nesw-resize' },
+        { handle: 'w', hx: x, hy: cy, cursor: 'ew-resize' },
+      ];
 
   return (
     <g transform={transform} className="pointer-events-auto">
@@ -76,6 +87,31 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         }}
       />
 
+      {/* Top Header Labels: Name on left, Dimensions on right */}
+      <g className="pointer-events-none select-none">
+        {title && (
+          <text
+            x={x}
+            y={y - 8 / zoom}
+            fill="#64748B"
+            fontSize={Math.max(10, 11 / zoom)}
+            fontWeight="600"
+          >
+            {title}
+          </text>
+        )}
+        <text
+          x={x + width}
+          y={y - 8 / zoom}
+          textAnchor="end"
+          fill="#64748B"
+          fontSize={Math.max(10, 11 / zoom)}
+          fontWeight="500"
+        >
+          {`${Math.round(width)} × ${Math.round(height)}`}
+        </text>
+      </g>
+
       {/* Primary selection outline */}
       <rect
         x={x}
@@ -83,14 +119,14 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         width={width}
         height={height}
         fill="none"
-        stroke="#38bdf8"
+        stroke="#6366F1"
         strokeWidth={Math.max(1.5, 1.5 / zoom)}
         strokeDasharray={isSingleSelection ? undefined : '4 4'}
         className="pointer-events-none"
       />
 
-      {/* Rotation stalk and handle */}
-      {isSingleSelection && (
+      {/* Rotation stalk and handle (desktop only) */}
+      {isSingleSelection && !isMobile && (
         <g>
           {/* Stalk line */}
           <line
@@ -98,7 +134,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
             y1={y}
             x2={cx}
             y2={rotHandleY}
-            stroke="#38bdf8"
+            stroke="#6366F1"
             strokeWidth={Math.max(1.5, 1.5 / zoom)}
             className="pointer-events-none"
           />
@@ -121,14 +157,14 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
             cy={rotHandleY}
             r={visualSize / 1.5}
             fill="#ffffff"
-            stroke="#38bdf8"
+            stroke="#6366F1"
             strokeWidth={Math.max(2, 2 / zoom)}
-            className="pointer-events-none"
+            className="pointer-events-none shadow-sm"
           />
         </g>
       )}
 
-      {/* 8 Resize Handles with 48x48px touch targets */}
+      {/* Resize Handles with 48x48px touch targets */}
       {handles.map(({ handle, hx, hy, cursor }) => (
         <g key={handle}>
           {/* Touch target circle */}
@@ -144,47 +180,18 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
               onHandlePointerDown(handle, e);
             }}
           />
-          {/* Visual handle square */}
-          <rect
-            x={hx - visualSize / 2}
-            y={hy - visualSize / 2}
-            width={visualSize}
-            height={visualSize}
+          {/* Visual circular handle */}
+          <circle
+            cx={hx}
+            cy={hy}
+            r={visualSize / 2}
             fill="#ffffff"
-            stroke="#38bdf8"
+            stroke="#6366F1"
             strokeWidth={Math.max(1.5, 1.5 / zoom)}
-            rx={1}
             className="pointer-events-none shadow-sm"
           />
         </g>
       ))}
-
-      {/* Dimension Label Badge (e.g. "390 × 844") */}
-      <g
-        transform={`translate(${cx}, ${y + height + Math.max(16, 16 / zoom)})`}
-        className="pointer-events-none select-none"
-      >
-        <rect
-          x={-40 / zoom}
-          y={-10 / zoom}
-          width={80 / zoom}
-          height={20 / zoom}
-          rx={4 / zoom}
-          fill="#1e293b"
-          opacity={0.9}
-        />
-        <text
-          x={0}
-          y={4 / zoom}
-          fill="#38bdf8"
-          fontSize={Math.max(10, 11 / zoom)}
-          fontFamily="JetBrains Mono, monospace"
-          fontWeight="500"
-          textAnchor="middle"
-        >
-          {`${Math.round(width)} × ${Math.round(height)}`}
-        </text>
-      </g>
     </g>
   );
 };

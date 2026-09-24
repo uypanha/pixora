@@ -195,29 +195,34 @@ function EditorApp() {
           )}
 
           {/* Main Workspace */}
-          <div className="flex-1 flex flex-row overflow-hidden relative">
-            {/* Left Sidebar (Desktop / Tablet toggle) */}
-            {!isMobile && showLeftSidebar && <LayerTree />}
+          {isMobile ? (
+            <div className="flex-1 flex flex-col overflow-hidden relative w-full h-full bg-[#F1F5F9]">
+              {/* Center Canvas */}
+              <main className="flex-1 relative overflow-hidden flex flex-col w-full h-full">
+                <Canvas />
+                <MobileFloatingTools />
+              </main>
 
-            {/* Center Canvas */}
-            <main className="flex-1 relative overflow-hidden flex flex-col">
-              <Canvas />
+              {/* Mobile Bottom Sheet (slides up directly above nav bar) */}
+              <MobileBottomSheet />
 
-              {/* Mobile Floating Tools & Sheets */}
-              {isMobile && <MobileFloatingTools />}
-            </main>
+              {/* Mobile Bottom Navigation Bar (fixed at bottom) */}
+              <MobileBottomNav />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-row overflow-hidden relative">
+              {/* Left Sidebar (Desktop / Tablet toggle) */}
+              {showLeftSidebar && <LayerTree />}
 
-            {/* Right Properties Panel (Desktop / Tablet toggle) */}
-            {!isMobile && showRightSidebar && <PropertiesPanel />}
+              {/* Center Canvas */}
+              <main className="flex-1 relative overflow-hidden flex flex-col">
+                <Canvas />
+              </main>
 
-            {/* Mobile Bottom Sheets & Navigation */}
-            {isMobile && (
-              <>
-                <MobileBottomSheet />
-                <MobileBottomNav />
-              </>
-            )}
-          </div>
+              {/* Right Properties Panel (Desktop / Tablet toggle) */}
+              {showRightSidebar && <PropertiesPanel />}
+            </div>
+          )}
 
           <ExportModal />
           <ShortcutsModal />

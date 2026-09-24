@@ -51,7 +51,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [activeGuides, setActiveGuides] = useState<SmartGuideLine[]>([]);
   const [clipboard, setClipboard] = useState<PixoraObject[] | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [mobileActiveTab, setMobileActiveTab] = useState<'layers' | 'add' | 'properties' | null>(null);
+  const [mobileActiveTab, setMobileActiveTab] = useState<'layers' | 'add' | 'properties' | null>(
+    () => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'properties' : null)
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
@@ -63,6 +65,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       );
     } else {
       setSelectedIds([id]);
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobileActiveTab('properties');
+      }
     }
   }, []);
 
@@ -97,7 +102,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 
   const zoomToFit = useCallback(
     (bounds: RectBounds, containerWidth: number, containerHeight: number) => {
-      const padding = 60;
+      const padding = containerWidth < 500 ? 32 : 60;
       const availableW = Math.max(100, containerWidth - padding * 2);
       const availableH = Math.max(100, containerHeight - padding * 2);
 
