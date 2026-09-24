@@ -152,22 +152,18 @@ describe('Figma-like HomeScreen Dashboard', () => {
     expect(handleOpenProject.mock.calls[0][0].projectType).toBe('canvas');
   });
 
-  it('resumes active project when clicking continue button in header', () => {
-    const handleResume = vi.fn();
-
+  it('action bar does not show continue or new button', () => {
     render(
       <HomeScreen
         onOpenProject={vi.fn()}
-        onResumeActiveProject={handleResume}
+        onResumeActiveProject={vi.fn()}
         hasActiveProject={true}
         activeProjectName="Current Working File"
       />
     );
 
-    const resumeBtn = screen.getByText(/Continue: Current Working File/i);
-    expect(resumeBtn).toBeInTheDocument();
-    fireEvent.click(resumeBtn);
-    expect(handleResume).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Continue:/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^new$/i })).not.toBeInTheDocument();
   });
 
   it('switches between grid view and list view', async () => {

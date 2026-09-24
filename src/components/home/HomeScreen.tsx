@@ -47,15 +47,12 @@ import { useOptionalEditor } from '../../editor/editorContext';
 interface HomeScreenProps {
   onOpenProject: (doc: PixoraDocument) => void;
   onResumeActiveProject?: () => void;
-  hasActiveProject: boolean;
+  hasActiveProject?: boolean;
   activeProjectName?: string;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProject,
-  onResumeActiveProject,
-  hasActiveProject,
-  activeProjectName,
 }) => {
   const optionalEditor = useOptionalEditor();
 
@@ -382,21 +379,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Resume Active Project Button */}
-            {hasActiveProject && onResumeActiveProject && (
-              <button
-                onClick={onResumeActiveProject}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition-all shadow-sm group"
-                title={`Continue working on ${activeProjectName || 'Active Project'}`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                  Continue: {activeProjectName || 'Current File'}
-                </span>
-                <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            )}
-
             {/* Storage Meter Badge (Desktop) */}
             <div
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1E293B] border border-[#334155]/60 text-slate-300 text-xs cursor-help"
@@ -414,16 +396,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               type="button"
             >
               <Keyboard size={16} />
-            </button>
-
-            {/* "+ New" Project Trigger */}
-            <button
-              onClick={() => setIsCustomModalOpen(true)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500 transition-colors shadow-sm shadow-indigo-900/30"
-              type="button"
-            >
-              <Plus size={15} />
-              <span>New</span>
             </button>
 
             {/* Avatar Pill */}
